@@ -1,0 +1,7 @@
+org/redhat/amq/tools/ConsumerTool$ExtraThread.class
+org/redhat/amq/tools/ConsumerTool.class
+org/redhat/amq/tools/ProducerTool$CustomShutdownHook.class
+org/redhat/amq/tools/ProducerAndConsumerTool.class
+org/redhat/amq/tools/CommandLineSupport.class
+org/redhat/amq/tools/ProducerTool.class
+org/redhat/amq/tools/ConsumerTool$CustomShutdownHook.class
