@@ -53,7 +53,6 @@ public class ConsumerTool {
 	private long maxMessages;
 	private long sampleSize = 10000L;
 	private ActiveMQConnectionFactory connectionFactory;
-	private Connection connection;
 	private ExecutorService threadPool;
 	private CountDownLatch latch;
 
@@ -177,14 +176,6 @@ public class ConsumerTool {
 		if ("SESSION_TRANSACTED".equalsIgnoreCase(ackMode)) {
 			this.ackMode = Session.SESSION_TRANSACTED;
 		}
-	}
-
-	public Connection getConnection() {
-		return connection;
-	}
-
-	public void setConnection(Connection connection) {
-		this.connection = connection;
 	}
 
 	public boolean isPersistent() {

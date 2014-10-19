@@ -14,25 +14,18 @@
 package org.redhat.amq.tools;
 
 import java.util.Arrays;
-import java.util.Date;
-
-import javax.jms.Connection;
-import javax.jms.DeliveryMode;
-import javax.jms.Destination;
-import javax.jms.MessageProducer;
-import javax.jms.Session;
-import javax.jms.TextMessage;
-
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.apache.activemq.ActiveMQConnection;
 import org.apache.activemq.ActiveMQConnectionFactory;
 
 /**
  * A simple JMS tool for publishing messages
  */
-public class ProducerTool implements Runnable {
+public class ProducerTool {
 
-	private static final String JMSXGROUPID = "JMSXGroupID";
-	private Destination destination;
+	private ActiveMQConnectionFactory connectionFactory;
 	private String user = "joef";
 	private String password = "admin";
 	private String url = ActiveMQConnection.DEFAULT_BROKER_URL;
@@ -44,68 +37,67 @@ public class ProducerTool implements Runnable {
 	private boolean persistent;
 	private boolean verbose;
 	private boolean rollback;
-	private boolean help;
-	private long milliStart;
-	private long milliLast;
-	private long msgsSent = 1L;
+	private boolean help;	
 	private long messageCount = 10000L;
 	private long sampleSize = 10000L;
 	private long sleepTime;
 	private long timeToLive;
 	private int transactedBatchSize = 1;
-	private int transactedBatchCount;
 	private int messageSize = 255;
 	private int priority = -1;
+	private int threadCount = 1;
+	private CountDownLatch latch;
+	private ExecutorService threadPool;
 
 	// @formatter:off
-		private final String Usage = "\nusage: java ProducerTool \n"
-				+ "[[user=<userid>]                           default:" + user + "\n" 			
-				+ "[password=<password>]                      default:" + password + "\n" 
-				+ "[subject=<queue or topic name>]            default:" + subject + "\n"  
-				+ "[url=<broker url>]                         default: " + url + "\n" 
-				+ "[group=<group id>]                         default: " + "null" + "\n" 
-				+ "[priority=<priority (0-9)>]                default: " + "not set" + "\n" 
-				+ "[timeToLive=<msg time to live>]            default: " + "not set" + "\n" 
-				+ "[sleepTime=<sleep time between each send>] default: " + sleepTime + "\n" 
-				+ "[message=<msg-to-send>]                    default: one will be created\n" 
-				+ "[messageSize=<size of msg to send>]        default: " + messageSize + "\n" 
-				+ "[messageCount=<# of msgs to send>]         default: " + messageCount + "\n" 
-				+ "[sampleSize=<# of msgs to sample>]         default: " + sampleSize + "\n" 
-				+ "[transactedBatchSize=<trx batch size>]     default: 1\n" 					
-				+ "[transacted]                               default: false\n" 
-				+ "[durable]                                  default: false\n" 
-				+ "[persistent]                               default: false \n" 
-				+ "[topic]]                                   default: false\n";	
+	private final String Usage = "\nusage: java ProducerTool \n"
+		+ "[[user=<userid>]                           default:" + user + "\n" 			
+		+ "[password=<password>]                      default:" + password + "\n" 
+		+ "[subject=<queue or topic name>]            default:" + subject + "\n"  
+		+ "[url=<broker url>]                         default: " + url + "\n" 
+		+ "[group=<group id>]                         default: " + "null" + "\n" 
+		+ "[priority=<priority (0-9)>]                default: " + "not set" + "\n" 
+		+ "[timeToLive=<msg time to live>]            default: " + "not set" + "\n" 
+		+ "[sleepTime=<sleep time between each send>] default: " + sleepTime + "\n" 
+		+ "[message=<msg-to-send>]                    default: one will be created\n" 
+		+ "[messageSize=<size of msg to send>]        default: " + messageSize + "\n" 
+		+ "[messageCount=<# of msgs to send>]         default: " + messageCount + "\n" 
+		+ "[sampleSize=<# of msgs to sample>]         default: " + sampleSize + "\n"
+		+ "[threadCount=<# of producer threads]       default: 1\n" 
+		+ "[transactedBatchSize=<trx batch size>]     default: 1\n" 					
+		+ "[transacted]                               default: false\n" 
+		+ "[durable]                                  default: false\n" 
+		+ "[persistent]                               default: false \n" 
+		+ "[topic]]                                   default: false\n";	
 	// @formatter:on
 
 	public static void main(String[] args) {
+
 		ProducerTool producerTool = new ProducerTool();
+
 		// Read in the command line options
 		String[] unknown = CommandLineSupport.setOptions(producerTool, args);
+
 		// Exit if end user entered unknown options
 		if (unknown.length > 0) {
 			System.out.println("Unknown options: " + Arrays.toString(unknown));
 			System.exit(-1);
 		}
 
+		// If 'help' request, then simply display usage string and exit
 		if (producerTool.isHelp()) {
 			System.out.println(producerTool.Usage);
 			return;
 		}
 
-		producerTool.run();
+		producerTool.start();
 	}
 
-	public void run() {
-		Connection connection = null;
+	public void start() {
+
 		try {
-			// creating a shutdown hook that displays the final overall message
-			// count
-			CustomShutdownHook customShutdownHook = new CustomShutdownHook();
-			Runtime.getRuntime().addShutdownHook(customShutdownHook);
 
 			System.out.println("A-MQ ProducerTool");
-
 			// @formatter:off
 			System.out.println("url                  = " + url);										
 			System.out.println("user                 = " + user);
@@ -126,165 +118,63 @@ public class ProducerTool implements Runnable {
 			System.out.println("transactedBatchSize  = " + transactedBatchSize);
 			// @formatter:on
 
-			// Create the connection.
-			ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
-					user, password, url);
+			// Create the connection factory.
+			connectionFactory = new ActiveMQConnectionFactory(user, password,
+					url);
 
-			System.out.print("Creating connection...");
-			connection = connectionFactory.createConnection();
+			// latch used to wait for consumer threads to complete
+			setLatch(new CountDownLatch(getThreadCount()));
 
-			System.out.println("Starting connection...");
-			connection.start();
-
-			// Create the session
-			System.out.print("Connection started, creating session...");
-
-			Session session = connection.createSession(transacted,
-					Session.AUTO_ACKNOWLEDGE);
-
-			destination = topic ? session.createTopic(subject) : session
-					.createQueue(subject);
-
-			// Create the producer.
-			System.out.print("Creating producer...");
-
-			MessageProducer producer = session.createProducer(destination);
-
-			if (persistent) {
-				producer.setDeliveryMode(DeliveryMode.PERSISTENT);
-			} else {
-				producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
+			// create the thread pool and start the consumer threads
+			setThreadPool(Executors.newFixedThreadPool(getThreadCount()));
+			for (int i = 1; i <= getThreadCount(); i++) {
+				getThreadPool().execute(new ProducerThread(this, i, latch));
 			}
 
-			if (timeToLive > 0) {
-				producer.setTimeToLive(timeToLive);
-			}
-
-			if (getPriority() >= 0) {
-				producer.setPriority(getPriority());
-			}
-
-			System.out.println("Producing");
-
-			// Start sending messages
-			sendLoop(session, producer);
+			// wait for the producers to finish
+			getLatch().await();
 
 		} catch (Exception e) {
 			System.out.println("Caught: " + e);
 			e.printStackTrace();
 		} finally {
-			if (connection != null) {
-				try {
-					connection.close();
-				} catch (Throwable ignore) {
-				}
+			if (getThreadPool() != null) {
+				getThreadPool().shutdown();
 			}
 		}
-	}
-
-	protected void sendLoop(Session session, MessageProducer producer)
-			throws Exception {
-		milliStart = System.currentTimeMillis();
-		milliLast = System.currentTimeMillis();
-		long countLast = 0;
-		boolean rolledBack = false;
-
-		for (msgsSent = 1; msgsSent <= messageCount; msgsSent++) {
-
-			TextMessage message = session
-					.createTextMessage(createMessageText(msgsSent));
-
-			if (verbose) {
-				String msg = message.getText();
-				if (msg.length() > 50) {
-					msg = msg.substring(0, 50) + "...";
-				}
-				System.out.println("Sending : " + msg);
-			}
-
-			if (getGroup() != null) {
-				message.setStringProperty(JMSXGROUPID, getGroup());
-			}
-
-			producer.send(message);
-
-			if (transacted && (++transactedBatchCount == transactedBatchSize)) {
-				transactedBatchCount = 0;
-				if (rollback) {
-					session.rollback();
-					rolledBack = true;
-				} else {
-					session.commit();
-				}
-			}
-
-			if (!rolledBack) {
-				if (msgsSent % sampleSize == 0) {
-					long milliCurrent = System.currentTimeMillis();
-					long lastInterval = milliCurrent - milliLast;
-					long rateInterval = lastInterval == 0 ? 0
-							: (1000 * (msgsSent - countLast)) / lastInterval;
-					long rateOverall = (1000 * msgsSent)
-							/ (milliCurrent - milliStart);
-					System.out.println(msgsSent
-							+ " messages sent as of second "
-							+ (milliCurrent - milliStart) / 1000
-							+ ", sample rate " + rateInterval
-							+ "/sec, overall rate " + rateOverall + "/sec");
-					System.out.flush();
-					milliLast = System.currentTimeMillis();
-					countLast = msgsSent;
-				}
-			} else {
-				rolledBack = false;
-			}
-
-			if (sleepTime > 0) {
-				Thread.sleep(sleepTime);
-			}
-
-		}
-
-	}
-
-	private static StringBuffer strBuffer = null;
-
-	private String createMessageText(long index) {
-
-		if (getMessage() != null) {
-			return getMessage();
-		}
-
-		if (strBuffer == null) {
-			strBuffer = new StringBuffer(messageSize);
-		} else if (strBuffer.length() > 0) {
-			strBuffer.delete(0, strBuffer.length());
-		}
-
-		strBuffer.append("Message: " + index + " sent at: " + new Date());
-		if (strBuffer.length() > messageSize) {
-			return strBuffer.substring(0, messageSize);
-		}
-		for (int i = strBuffer.length(); i < messageSize; i++) {
-			strBuffer.append(' ');
-		}
-		return strBuffer.toString();
+		System.out.println("Run completed");
 	}
 
 	public void setPersistent(boolean durable) {
 		this.persistent = durable;
 	}
 
+	public boolean isPersistent() {
+		return persistent;
+	}
+
 	public void setRollback(boolean rback) {
 		this.rollback = rback;
+	}
+
+	public boolean isRollback() {
+		return rollback;
 	}
 
 	public void setMessageCount(long messageCount) {
 		this.messageCount = messageCount;
 	}
 
+	public long getMessageCount() {
+		return messageCount;
+	}
+
 	public void setMessageSize(int messageSize) {
 		this.messageSize = messageSize;
+	}
+
+	public int getMessageSize() {
+		return messageSize;
 	}
 
 	public void setPassword(String pwd) {
@@ -295,24 +185,52 @@ public class ProducerTool implements Runnable {
 		this.sleepTime = sleepTime;
 	}
 
+	public long getSleepTime() {
+		return sleepTime;
+	}
+
 	public void setSubject(String subject) {
 		this.subject = subject;
+	}
+
+	public String getSubject() {
+		return subject;
 	}
 
 	public void setTimeToLive(long timeToLive) {
 		this.timeToLive = timeToLive;
 	}
 
+	public long getTimeToLive() {
+		return timeToLive;
+	}
+
 	public void setTopic(boolean topic) {
 		this.topic = topic;
+	}
+
+	public boolean isTopic() {
+		return topic;
 	}
 
 	public void setQueue(boolean queue) {
 		this.topic = !queue;
 	}
 
+	public boolean isQueue() {
+		return !topic;
+	}
+
+	public boolean isVerbose() {
+		return verbose;
+	}
+
 	public void setTransacted(boolean transacted) {
 		this.transacted = transacted;
+	}
+
+	public boolean isTransacted() {
+		return transacted;
 	}
 
 	public void setUrl(String url) {
@@ -331,8 +249,16 @@ public class ProducerTool implements Runnable {
 		this.transactedBatchSize = size;
 	}
 
+	public int getTransactedBatchSize() {
+		return transactedBatchSize;
+	}
+
 	public void setSampleSize(long sampleSize) {
 		this.sampleSize = sampleSize;
+	}
+
+	public long getSampleSize() {
+		return sampleSize;
 	}
 
 	/**
@@ -400,12 +326,53 @@ public class ProducerTool implements Runnable {
 		this.message = message;
 	}
 
-	public class CustomShutdownHook extends Thread {
-
-		@Override
-		public void run() {
-			System.out.println("Shutdown detected - total messages sent = "
-					+ (msgsSent - 1));
-		}
+	public ActiveMQConnectionFactory getConnectionFactory() {
+		return connectionFactory;
 	}
+
+	/**
+	 * @return the latch
+	 */
+	public CountDownLatch getLatch() {
+		return latch;
+	}
+
+	/**
+	 * @param latch
+	 *            the latch to set
+	 */
+	public void setLatch(CountDownLatch latch) {
+		this.latch = latch;
+	}
+
+	/**
+	 * @return the threadCount
+	 */
+	public int getThreadCount() {
+		return threadCount;
+	}
+
+	/**
+	 * @param threadCount
+	 *            the threadCount to set
+	 */
+	public void setThreadCount(int threadCount) {
+		this.threadCount = threadCount;
+	}
+
+	/**
+	 * @return the threadPool
+	 */
+	public ExecutorService getThreadPool() {
+		return threadPool;
+	}
+
+	/**
+	 * @param threadPool
+	 *            the threadPool to set
+	 */
+	public void setThreadPool(ExecutorService threadPool) {
+		this.threadPool = threadPool;
+	}
+
 }
