@@ -48,21 +48,21 @@ public class ProducerThread implements Runnable {
 
 		System.out.println("Producer " + getThreadID() + " has started");
 
-		// creating a shutdown hook that displays the final overall message
+		// create a shutdown hook that displays the final overall message
 		// count
-		CustomShutdownHook customShutdownHook = new CustomShutdownHook();
-		Runtime.getRuntime().addShutdownHook(customShutdownHook);
+		Runtime.getRuntime().addShutdownHook(new CustomShutdownHook());
 
 		try {
 			log("Creating connection...");
-			connection = getConnectionFactory().createConnection();
+			setConnection(getConnectionFactory().createConnection());
 
 			log("Starting connection...");
-			connection.start();
+			getConnection().start();
 
-			Session session = connection.createSession(isTransacted(),
+			Session session = getConnection().createSession(isTransacted(),
 					Session.AUTO_ACKNOWLEDGE);
 
+			// create the target destination
 			destination = isTopic() ? session.createTopic(getSubject())
 					: session.createQueue(getSubject());
 
@@ -71,28 +71,31 @@ public class ProducerThread implements Runnable {
 
 			MessageProducer producer = session.createProducer(destination);
 
+			// specify whether or not producer is sending persistent messages
 			if (this.isPersistent()) {
 				producer.setDeliveryMode(DeliveryMode.PERSISTENT);
 			} else {
 				producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
 			}
 
+			// specify whether messages has a TTL
 			if (getTimeToLive() > 0) {
 				producer.setTimeToLive(getTimeToLive());
 			}
 
+			// specify whther messages have a priority
 			if (getPriority() >= 0) {
 				producer.setPriority(getPriority());
 			}
 
-			log("Producing ...");
 			// Start sending messages
+			log("Producing ...");
+
 			sendLoop(session, producer);
 
 		} catch (Exception e) {
 			System.out.println("Caught: " + e);
 			e.printStackTrace();
-
 		} finally {
 			if (connection != null) {
 				try {
@@ -100,6 +103,7 @@ public class ProducerThread implements Runnable {
 				} catch (Throwable ignore) {
 				}
 			}
+			// countdown the latch indicating this thread is done
 			latch.countDown();
 		}
 
@@ -113,6 +117,7 @@ public class ProducerThread implements Runnable {
 		long countLast = 0;
 		boolean rolledBack = false;
 
+		// send messageCount number of messages
 		for (msgsSent = 1; msgsSent <= getMessageCount(); msgsSent++) {
 
 			TextMessage message = session
@@ -126,15 +131,20 @@ public class ProducerThread implements Runnable {
 				log("Sending : " + msg);
 			}
 
+			// if insructed to do so, use JMSXGROUPID
 			if (getGroup() != null) {
 				message.setStringProperty(JMSXGROUPID, getGroup());
 			}
 
+			// send message
 			producer.send(message);
 
+			// if the producer is transacted and it has reached the transacted
+			// batch count, then commit the trx
 			if (isTransacted()
 					&& (++transactedBatchCount == getTransactedBatchSize())) {
 				transactedBatchCount = 0;
+				// if instructed to do so, rollback instead of comitting the trx
 				if (isRollback()) {
 					session.rollback();
 					rolledBack = true;
@@ -143,36 +153,38 @@ public class ProducerThread implements Runnable {
 				}
 			}
 
-			if (!rolledBack) {
-				if (msgsSent % getSampleSize() == 0) {
-					long milliCurrent = System.currentTimeMillis();
-					long lastInterval = milliCurrent - milliLast;
-					long rateInterval = lastInterval == 0 ? 0
-							: (1000 * (msgsSent - countLast)) / lastInterval;
-					long rateOverall = (1000 * msgsSent)
-							/ (milliCurrent - milliStart);
-					log(msgsSent + " messages sent as of second "
-							+ (milliCurrent - milliStart) / 1000
-							+ ", sample rate " + rateInterval
-							+ "/sec, overall rate " + rateOverall + "/sec");
-					System.out.flush();
-					milliLast = System.currentTimeMillis();
-					countLast = msgsSent;
-				}
-			} else {
-				rolledBack = false;
+			// display metrics only if trx was not rolled back, this is thread
+			// #1, and sample size has been reached
+			if (!rolledBack && getThreadID() == 1
+					&& msgsSent % getSampleSize() == 0) {
+				long milliCurrent = System.currentTimeMillis();
+				long lastInterval = milliCurrent - milliLast;
+				long rateInterval = lastInterval == 0 ? 0
+						: (1000 * (msgsSent - countLast)) / lastInterval;
+				long rateOverall = (1000 * msgsSent)
+						/ (milliCurrent - milliStart);
+				log(msgsSent + " messages sent as of second "
+						+ (milliCurrent - milliStart) / 1000 + ", sample rate "
+						+ rateInterval + "/sec, overall rate " + rateOverall
+						+ "/sec");
+				milliLast = System.currentTimeMillis();
+				countLast = msgsSent;
 			}
 
+			// if instructed to do so, sleep in between sends
 			if (getSleepTime() > 0) {
 				Thread.sleep(getSleepTime());
 			}
 
+			rolledBack = false;
 		}
-
 	}
 
+	// create message to send
 	private String createMessageText(long index) {
 
+		// if user provided a message, then simply return it and don't bother
+		// creating one
 		if (getMessage() != null) {
 			return getMessage();
 		}
@@ -193,6 +205,7 @@ public class ProducerThread implements Runnable {
 		return strBuffer.toString();
 	}
 
+	// simple little logger that only prints output from first thread
 	private void log(String str) {
 		if (getThreadID() == 1) {
 			System.out.println(str);
@@ -239,7 +252,7 @@ public class ProducerThread implements Runnable {
 		return pt.getSleepTime();
 	}
 
-	public boolean isVerbose() {
+	private boolean isVerbose() {
 		return pt.isVerbose();
 	}
 
@@ -253,10 +266,6 @@ public class ProducerThread implements Runnable {
 
 	private boolean isTopic() {
 		return pt.isTopic();
-	}
-
-	private boolean isQueue() {
-		return pt.isQueue();
 	}
 
 	private int getTransactedBatchSize() {
