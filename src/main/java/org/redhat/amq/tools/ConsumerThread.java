@@ -82,7 +82,7 @@ public class ConsumerThread implements Runnable, MessageListener, ExceptionListe
 					&& !"null".equals(getClientId())) {
 				log(getThreadID() + ":setting clientID = " + getClientId()
 						+ "...");
-				connection.setClientID(getClientId() + getThreadID());
+				connection.setClientID(getConsumerName() + getThreadID());
 			}
 
 			connection.setExceptionListener(this);
