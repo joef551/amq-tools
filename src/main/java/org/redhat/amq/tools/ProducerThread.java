@@ -14,14 +14,18 @@
 package org.redhat.amq.tools;
 
 import java.util.Date;
+import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 
 import javax.jms.Connection;
 import javax.jms.DeliveryMode;
 import javax.jms.Destination;
+import javax.jms.Message;
+import javax.jms.MessageConsumer;
 import javax.jms.MessageProducer;
 import javax.jms.Session;
 import javax.jms.TextMessage;
+
 import org.apache.activemq.ActiveMQConnectionFactory;
 
 public class ProducerThread implements Runnable {
@@ -36,7 +40,9 @@ public class ProducerThread implements Runnable {
 	private long milliStart;
 	private long milliLast;
 	private int transactedBatchCount;
-	private StringBuffer strBuffer = null;
+	private StringBuffer strBuffer;
+	private Destination tempDest;
+	private MessageConsumer consumer;
 
 	public ProducerThread(ProducerTool pt, int threadID, CountDownLatch latch) {
 		this.pt = pt;
@@ -70,6 +76,12 @@ public class ProducerThread implements Runnable {
 			log("Creating producer...");
 
 			MessageProducer producer = session.createProducer(destination);
+
+			// if requested to do so, implement request-reply pattern
+			if (isReply()) {
+				consumer = session.createConsumer(session
+						.createTemporaryQueue());
+			}
 
 			// specify whether or not producer is sending persistent messages
 			if (this.isPersistent()) {
@@ -136,6 +148,13 @@ public class ProducerThread implements Runnable {
 				message.setStringProperty(JMSXGROUPID, getGroup());
 			}
 
+			// if instructed to do so implement request-reply, but only if
+			// non-transacted mode
+			if (isReply() && !isTransacted()) {
+				message.setJMSReplyTo(tempDest);
+				message.setJMSCorrelationID(createRandomString());
+			}
+
 			// send message
 			producer.send(message);
 
@@ -150,6 +169,13 @@ public class ProducerThread implements Runnable {
 					rolledBack = true;
 				} else {
 					session.commit();
+				}
+			}
+
+			if (isReply() && !isTransacted()) {
+				Message receivedMessage = consumer.receive(5000);
+				if (receivedMessage == null) {
+					throw new Exception("Reply message not received within allotted time");
 				}
 			}
 
@@ -272,6 +298,16 @@ public class ProducerThread implements Runnable {
 		return pt.getTransactedBatchSize();
 	}
 
+	private boolean isReply() {
+		return pt.isReply();
+	}
+
+	private String createRandomString() {
+		Random random = new Random(System.currentTimeMillis());
+		long randomLong = random.nextLong();
+		return Long.toHexString(randomLong);
+	}
+
 	public class CustomShutdownHook extends Thread {
 
 		@Override
@@ -344,6 +380,36 @@ public class ProducerThread implements Runnable {
 	 */
 	public void setLatch(CountDownLatch latch) {
 		this.latch = latch;
+	}
+
+	/**
+	 * @return the tempDest
+	 */
+	public Destination getTempDest() {
+		return tempDest;
+	}
+
+	/**
+	 * @param tempDest
+	 *            the tempDest to set
+	 */
+	public void setTempDest(Destination tempDest) {
+		this.tempDest = tempDest;
+	}
+
+	/**
+	 * @return the consumer
+	 */
+	public MessageConsumer getConsumer() {
+		return consumer;
+	}
+
+	/**
+	 * @param consumer
+	 *            the consumer to set
+	 */
+	public void setConsumer(MessageConsumer consumer) {
+		this.consumer = consumer;
 	}
 
 }

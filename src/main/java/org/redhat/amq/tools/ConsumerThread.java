@@ -31,7 +31,8 @@ import javax.jms.Topic;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
 
-public class ConsumerThread implements Runnable, MessageListener, ExceptionListener {
+public class ConsumerThread implements Runnable, MessageListener,
+		ExceptionListener {
 
 	private ConsumerTool ct;
 	private MessageProducer replyProducer;
@@ -199,17 +200,13 @@ public class ConsumerThread implements Runnable, MessageListener, ExceptionListe
 			}
 
 			// If requested, reply to the message, but only if the session is
-			// not transacted or if it is, only when the trx has been committed.
-			// Do not reply if a rollback is being simulated.
-			if (message.getJMSReplyTo() != null) {
-				if (!isTransacted() || transactedBatchCount == 0
-						&& !isRollback()) {
-					log("replying");
-					replyProducer.send(
-							message.getJMSReplyTo(),
-							session.createTextMessage("Reply: "
-									+ message.getJMSMessageID()));
-				}
+			// not transacted.
+			if (!isTransacted() && message.getJMSReplyTo() != null) {
+				log("replying");
+				replyProducer.send(
+						message.getJMSReplyTo(),
+						session.createTextMessage("Reply: "
+								+ message.getJMSMessageID()));
 			}
 
 			// Start the clock if this is the first message in the sample

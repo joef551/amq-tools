@@ -36,6 +36,7 @@ public class ProducerTool {
 	private boolean transacted;
 	private boolean persistent;
 	private boolean verbose;
+	private boolean reply;
 	private boolean rollback;
 	private boolean help;	
 	private long messageCount = 10000L;
@@ -68,6 +69,7 @@ public class ProducerTool {
 		+ "[transacted]                               default: false\n" 
 		+ "[durable]                                  default: false\n" 
 		+ "[persistent]                               default: false \n" 
+		+ "[reply]                                    default: false \n" 
 		+ "[topic]]                                   default: false\n";	
 	// @formatter:on
 
@@ -115,6 +117,7 @@ public class ProducerTool {
 			System.out.println("sleepTime            = " + sleepTime);
 			System.out.println("timeToLive           = " + timeToLive);
 			System.out.println("priority             = " + priority);
+			System.out.println("reply                = " + reply);
 			System.out.println("transactedBatchSize  = " + transactedBatchSize);
 			// @formatter:on
 
@@ -373,6 +376,20 @@ public class ProducerTool {
 	 */
 	public void setThreadPool(ExecutorService threadPool) {
 		this.threadPool = threadPool;
+	}
+
+	/**
+	 * @return the reply
+	 */
+	public boolean isReply() {
+		return reply;
+	}
+
+	/**
+	 * @param reply the reply to set
+	 */
+	public void setReply(boolean reply) {
+		this.reply = reply;
 	}
 
 }
