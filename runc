@@ -1,4 +1,4 @@
-#!/bin/ksh
+#!/bin/bash
 
 export CLASSPATH=.:$CLASSPATH
 mvn -q exec:java -Dexec.mainClass="org.redhat.amq.tools.ConsumerTool" -Dexec.args="$*"   
