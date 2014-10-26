@@ -55,7 +55,7 @@ public class ProducerThread implements Runnable {
 		System.out.println("Producer " + getThreadID() + " has started");
 
 		// create a shutdown hook that displays the final overall message
-		// count
+		// count for this producer thread
 		Runtime.getRuntime().addShutdownHook(new CustomShutdownHook());
 
 		try {
@@ -77,20 +77,24 @@ public class ProducerThread implements Runnable {
 
 			MessageProducer producer = session.createProducer(destination);
 
-			// if requested to do so, implement request-reply pattern
-			if (isReply()) {
-				consumer = session.createConsumer(session
-						.createTemporaryQueue());
+			// if requested to do so, implement request-reply pattern, but
+			// only if transacted is set to false
+			if (!isTransacted() && isReply()) {
+				if (isVerbose()) {
+					log("implementing request-reply");
+				}
+				tempDest = session.createTemporaryQueue();
+				consumer = session.createConsumer(tempDest);
 			}
 
-			// specify whether or not producer is sending persistent messages
-			if (this.isPersistent()) {
+			// specify requested message persistence
+			if (isPersistent()) {
 				producer.setDeliveryMode(DeliveryMode.PERSISTENT);
 			} else {
 				producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
 			}
 
-			// specify whether messages has a TTL
+			// specify whether messages will have a TTL
 			if (getTimeToLive() > 0) {
 				producer.setTimeToLive(getTimeToLive());
 			}
@@ -100,7 +104,7 @@ public class ProducerThread implements Runnable {
 				producer.setPriority(getPriority());
 			}
 
-			// Start sending messages
+			// Start sending the messages
 			log("Producing ...");
 
 			sendLoop(session, producer);
@@ -172,10 +176,13 @@ public class ProducerThread implements Runnable {
 				}
 			}
 
+			// if not transacted and request-reply has been requested, then wait
+			// for reply
 			if (isReply() && !isTransacted()) {
 				Message receivedMessage = consumer.receive(5000);
 				if (receivedMessage == null) {
-					throw new Exception("Reply message not received within allotted time");
+					throw new Exception(
+							"Reply message not received within allotted time");
 				}
 			}
 
@@ -185,10 +192,13 @@ public class ProducerThread implements Runnable {
 					&& msgsSent % getSampleSize() == 0) {
 				long milliCurrent = System.currentTimeMillis();
 				long lastInterval = milliCurrent - milliLast;
+
 				long rateInterval = lastInterval == 0 ? 0
 						: (1000 * (msgsSent - countLast)) / lastInterval;
+
 				long rateOverall = (1000 * msgsSent)
 						/ (milliCurrent - milliStart);
+
 				log(msgsSent + " messages sent as of second "
 						+ (milliCurrent - milliStart) / 1000 + ", sample rate "
 						+ rateInterval + "/sec, overall rate " + rateOverall

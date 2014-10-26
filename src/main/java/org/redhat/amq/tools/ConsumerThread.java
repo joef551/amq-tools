@@ -202,7 +202,9 @@ public class ConsumerThread implements Runnable, MessageListener,
 			// If requested, reply to the message, but only if the session is
 			// not transacted.
 			if (!isTransacted() && message.getJMSReplyTo() != null) {
-				log("replying");
+				if(isVerbose()){
+					log("replying");
+				}
 				replyProducer.send(
 						message.getJMSReplyTo(),
 						session.createTextMessage("Reply: "

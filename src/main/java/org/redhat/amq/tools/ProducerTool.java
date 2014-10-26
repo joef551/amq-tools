@@ -92,6 +92,7 @@ public class ProducerTool {
 			return;
 		}
 
+		// start up the tool and worker threads
 		producerTool.start();
 	}
 
@@ -99,6 +100,7 @@ public class ProducerTool {
 
 		try {
 
+			// display settings for this run
 			System.out.println("A-MQ ProducerTool");
 			// @formatter:off
 			System.out.println("url                  = " + url);										
@@ -114,6 +116,7 @@ public class ProducerTool {
 			System.out.println("sampleSize           = " + sampleSize);		
 			System.out.println("messageCount         = " + messageCount);	
 			System.out.println("messageSize          = " + messageSize);
+			System.out.println("threadCount          = " + threadCount);
 			System.out.println("sleepTime            = " + sleepTime);
 			System.out.println("timeToLive           = " + timeToLive);
 			System.out.println("priority             = " + priority);
@@ -134,7 +137,7 @@ public class ProducerTool {
 				getThreadPool().execute(new ProducerThread(this, i, latch));
 			}
 
-			// wait for the producers to finish
+			// wait for the producer threads to finish
 			getLatch().await();
 
 		} catch (Exception e) {

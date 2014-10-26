@@ -14,18 +14,13 @@
 			<artifactId>activemq-all</artifactId>
 			<version>5.9.0.redhat-610379</version>
 			<!-- <version>5.8.0.redhat-60024</version> -->
-			<!-- <version>5.8.0.redhat-60065</version> -->
+			<!-- <version>5.8.0.redhat-60065</version> -->			
 		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
 			<version>RELEASE</version>
-		</dependency>
-		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-log4j12</artifactId>
-			<version>RELEASE</version>
-		</dependency>
+		</dependency>		
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
@@ -48,6 +43,7 @@
 			<version>5.8.0</version>
 		</dependency>
 	</dependencies>
+
 	<build>
 		<finalName>perftool</finalName>
 		<pluginManagement>
