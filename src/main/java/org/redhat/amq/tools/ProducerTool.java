@@ -38,7 +38,7 @@ public class ProducerTool {
 	private boolean verbose;
 	private boolean reply;
 	private boolean rollback;
-	private boolean help;	
+	private boolean help;
 	private long messageCount = 10000L;
 	private long sampleSize = 10000L;
 	private long sleepTime;
@@ -97,6 +97,15 @@ public class ProducerTool {
 	}
 
 	public void start() {
+
+		// if end-user has request to use request-reply pattern and also
+		// requested a transacted session, then set request-reply back to false
+		// if rollback has been requested or transacted batch size is greater
+		// than 1
+		if (isReply() && isTransacted()
+				&& (isRollback() || getTransactedBatchSize() > 1)) {
+			setReply(false);
+		}
 
 		try {
 
@@ -389,7 +398,8 @@ public class ProducerTool {
 	}
 
 	/**
-	 * @param reply the reply to set
+	 * @param reply
+	 *            the reply to set
 	 */
 	public void setReply(boolean reply) {
 		this.reply = reply;

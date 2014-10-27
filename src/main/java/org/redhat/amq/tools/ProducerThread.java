@@ -79,10 +79,8 @@ public class ProducerThread implements Runnable {
 
 			// if requested to do so, implement request-reply pattern, but
 			// only if transacted is set to false
-			if (!isTransacted() && isReply()) {
-				if (isVerbose()) {
-					log("implementing request-reply");
-				}
+			if (isReply()) {
+				log("implementing request-reply");
 				tempDest = session.createTemporaryQueue();
 				consumer = session.createConsumer(tempDest);
 			}
@@ -154,7 +152,7 @@ public class ProducerThread implements Runnable {
 
 			// if instructed to do so implement request-reply, but only if
 			// non-transacted mode
-			if (isReply() && !isTransacted()) {
+			if (isReply()) {
 				message.setJMSReplyTo(tempDest);
 				message.setJMSCorrelationID(createRandomString());
 			}
@@ -165,7 +163,7 @@ public class ProducerThread implements Runnable {
 			// if the producer is transacted and it has reached the transacted
 			// batch count, then commit the trx
 			if (isTransacted()
-					&& (++transactedBatchCount == getTransactedBatchSize())) {
+					&& ++transactedBatchCount == getTransactedBatchSize()) {
 				transactedBatchCount = 0;
 				// if instructed to do so, rollback instead of comitting the trx
 				if (isRollback()) {
@@ -176,9 +174,9 @@ public class ProducerThread implements Runnable {
 				}
 			}
 
-			// if not transacted and request-reply has been requested, then wait
-			// for reply
-			if (isReply() && !isTransacted()) {
+			// if request-reply has been requested, then wait
+			// for consumer's reply
+			if (isReply()) {
 				Message receivedMessage = consumer.receive(5000);
 				if (receivedMessage == null) {
 					throw new Exception(
