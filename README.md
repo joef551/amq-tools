@@ -3,6 +3,10 @@
 Simple Producer and Consumer Tool for ActiveMQ
 ======
 
+Run the following to do the initial build:
+
+$ mvn clean install -Dmaven.test.skip=true
+
 Use the 'runp' and 'runc' scripts to run the producer and consumer, respectively. Some examples:
 
 1. To display all producer options
