@@ -17,12 +17,14 @@ import java.util.Date;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 
+import javax.jms.BytesMessage;
 import javax.jms.Connection;
 import javax.jms.DeliveryMode;
 import javax.jms.Destination;
 import javax.jms.Message;
 import javax.jms.MessageConsumer;
 import javax.jms.MessageProducer;
+import javax.jms.ObjectMessage;
 import javax.jms.Session;
 import javax.jms.TextMessage;
 
@@ -127,7 +129,8 @@ public class ProducerThread implements Runnable {
 			throws Exception {
 
 		milliStart = System.currentTimeMillis();
-		milliLast = System.currentTimeMillis();
+		milliLast = milliStart;
+		
 		long countLast = 0;
 		boolean rolledBack = false;
 
@@ -137,13 +140,22 @@ public class ProducerThread implements Runnable {
 			TextMessage message = session
 					.createTextMessage(createMessageText(msgsSent));
 
-			if (isVerbose()) {
-				String msg = message.getText();
-				if (msg.length() > 50) {
-					msg = msg.substring(0, 50) + "...";
-				}
-				log("Sending : " + msg);
-			}
+			// Message message =
+			// session.createObjectMessage(createMessageText(msgsSent));
+			// ObjectMessage message = session.createObjectMessage();
+			// message.setObject(createMessageText(msgsSent));
+
+			// BytesMessage message = session.createBytesMessage();
+			// message.writeBytes(createMessageText(msgsSent).getBytes());
+
+			// ObjectMessage message =
+			// session.createObjectMessage(createMessageText(msgsSent));
+
+			/**
+			 * if (isVerbose()) { String msg = message.getText(); if
+			 * (msg.length() > 50) { msg = msg.substring(0, 50) + "..."; }
+			 * log("Sending : " + msg); }
+			 **/
 
 			// if insructed to do so, use JMSXGROUPID
 			if (getGroup() != null) {
@@ -188,20 +200,29 @@ public class ProducerThread implements Runnable {
 			// #1, and sample size has been reached
 			if (!rolledBack && getThreadID() == 1
 					&& msgsSent % getSampleSize() == 0) {
+
+				// get the current time
 				long milliCurrent = System.currentTimeMillis();
+
+				// determine how much time has elapsed since
+				// last sample was taken
 				long lastInterval = milliCurrent - milliLast;
 
+				// determine rate for last sample interval
 				long rateInterval = lastInterval == 0 ? 0
 						: (1000 * (msgsSent - countLast)) / lastInterval;
 
 				long rateOverall = (1000 * msgsSent)
 						/ (milliCurrent - milliStart);
 
-				log(msgsSent + " messages sent as of second "
-						+ (milliCurrent - milliStart) / 1000 + ", sample rate "
-						+ rateInterval + "/sec, overall rate " + rateOverall
+				log(msgsSent + " messages sent, sample rate = "
+						+ rateInterval + "/sec, overall rate = " + rateOverall
 						+ "/sec");
-				milliLast = System.currentTimeMillis();
+
+				// record this last sample time
+				milliLast = milliCurrent;
+
+				// record the number of messages sent when this sample was taken
 				countLast = msgsSent;
 			}
 
@@ -232,9 +253,11 @@ public class ProducerThread implements Runnable {
 		strBuffer.append("Message: " + index + " sent at: " + new Date());
 		if (strBuffer.length() > getMessageSize()) {
 			return strBuffer.substring(0, getMessageSize());
-		}
-		for (int i = strBuffer.length(); i < getMessageSize(); i++) {
-			strBuffer.append(' ');
+		} else {
+			for (int i = strBuffer.length(); i < getMessageSize() - 1; i++) {
+				strBuffer.append('X');
+			}
+			strBuffer.append('E');
 		}
 		return strBuffer.toString();
 	}
