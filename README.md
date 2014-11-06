@@ -17,25 +17,43 @@ Use the 'runp' and 'runc' scripts to run the producer and consumer, respectively
 
 	$ runp user=fred password=admin persistent 
 
-5. Same as above, but spawns 100 producer threads; each will create its own connection to the broker
+4. Same as above, but spawns 100 producer threads; each will create its own connection to the broker
 
 	$ runp user=Fred password=admin persistent threadCount=100
 
-6. Connect producer to broker and have it implement request-reply pattern using persitent messages. After each send, the producer will wait for a reply from the consumer. The producer will send the default number of messages (10000) each having default size (255).
+5. Connect producer to broker and have it implement request-reply pattern using persitent messages. After each send, the producer will wait for a reply from the consumer. The producer will send the default number of messages (10000) each having default size (255).
 
     $ runp persistent request 
 
-7. Same as above, but writes to topic instead of queue
+6. Same as above, but writes to topic instead of queue
 
 	$ runp user=Fred password=admin topic threadCount=100
 
-8. Connect consumer to broker at default URI with user Fred and password admin and consume from default subject
+7. Connect consumer to broker at default URI with user Fred and password admin and consume from default subject
 
 	$ runc user=Fred password=admin selector=foo=%27bar%27
 
-9. Same as above, but spawns 100 consumer threads; each will create its own connection to the broker
+8. Same as above, but spawns 100 consumer threads; each will create its own connection to the broker
 
 	$ runc user=Fred password=admin threadCount=100 selector=foo=%27bar%27
+	
+9. Connect the consumer to the broker using the given credentials and **http** transport. This assumes the broker has been assigned an http transport. 
+
+	$ runc user=admin password=admin url=http://127.0.0.1:62000
+	
+
+ActiveMQ Version
+----
+Note in the project's pom.xml that the version of the ActiveMQ client libraries being used is currently set at  `5.9.0.redhat-610379`. You will need to adjust it (i.e., comment and uncomment the lines below) according to the target ActiveMQ broker. 
+<br><br>
+
+
+`<version>5.9.0.redhat-610379</version>`
+
+`<!-- <version>5.8.0.redhat-60024</version> -->`
+
+`<!-- <version>5.8.0.redhat-60065</version> -->`
+<br><br>
 
 Consumer Options
 ----------------
