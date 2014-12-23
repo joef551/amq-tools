@@ -17,15 +17,20 @@ import java.util.Arrays;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
+import javax.jms.ExceptionListener;
+import javax.jms.Connection;
+import javax.jms.JMSException;
 import javax.jms.Session;
+
 import org.apache.activemq.ActiveMQConnection;
 import org.apache.activemq.ActiveMQConnectionFactory;
 
 /**
- * A simple AMQ client for consuming messages
+ * A simple AMQ client for consuming messages. Capable of spawning multiple
+ * client consumer threads.
  * 
  */
-public class ConsumerTool {
+public class ConsumerTool implements ExceptionListener {
 	private String subject = "TOOL.DEFAULT";
 	private String user = "joef";
 	private String password = "admin";
@@ -36,21 +41,25 @@ public class ConsumerTool {
 	private int transactedBatchSize = 1;
 	private int ackMode = Session.AUTO_ACKNOWLEDGE;
 	private int threadCount = 1;
+	private int batchCount = 1;
 	private boolean transacted;
 	private boolean durable;
 	private boolean unsubscribe = true;
 	private boolean persistent;
+	private boolean shareConnection;
 	private boolean help;
 	private boolean rollback;
 	private boolean pauseBeforeShutdown;
 	private boolean verbose;
 	private boolean topic;
+	private boolean batchRandom;
 	private long sleepTime;
 	private long receiveTimeOut;
 	private long milliStart;
 	private long maxMessages;
 	private long sampleSize = 10000L;
 	private ActiveMQConnectionFactory connectionFactory;
+	private Connection connection;
 	private ExecutorService threadPool;
 	private CountDownLatch latch;
 
@@ -74,6 +83,7 @@ public class ConsumerTool {
 			+ "[unsubscribe]                             default: true \n" 
 			+ "[persistent]                              default: false \n" 
 			+ "[rollback]                                default: false \n" 
+			+ "[shareConnection]                         default: false \n" 
 			+ "[topic]]                                  default: false\n";			
 	// @formatter:on
 
@@ -124,6 +134,9 @@ public class ConsumerTool {
 		System.out.println("ackMode          = " + ackMode);
 		System.out.println("sampleSize       = " + sampleSize);
 		System.out.println("selector         = " + selector);
+		System.out.println("shareConnection  = " + shareConnection);
+		System.out.println("batchCount       = " + batchCount);
+		System.out.println("batchRandom      = " + batchRandom);
 
 		// don't bother with this if we're in transacted mode
 		if (!isTransacted()) {
@@ -145,23 +158,39 @@ public class ConsumerTool {
 		// Create the connection factory used by the consumer threads
 		connectionFactory = new ActiveMQConnectionFactory(user, password, url);
 
+		if (shareConnection) {
+			connection = connectionFactory.createConnection();
+			connection.setExceptionListener(this);
+			System.out.println("Starting connection...");
+			connection.start();
+			System.out.println("Shared connection started.");
+		}
+
 		// latch used to wait for consumer threads to complete
 		latch = new CountDownLatch(getThreadCount());
 
 		// create the thread pool and start the consumer threads
 		threadPool = Executors.newFixedThreadPool(getThreadCount());
 		for (int i = 1; i <= getThreadCount(); i++) {
-			threadPool.execute(new ConsumerThread(this, i, latch));
+			threadPool.execute(new ConsumerThread(this, i, latch, connection));
 		}
 
 		// wait for the cosumers to finish
 		latch.await();
 		// shutdown the pool
-		threadPool.shutdown();		
+		threadPool.shutdown();
+
+		if (shareConnection) {
+			connection.close();
+		}
 		System.out.println("Run completed");
 	}
 
 	public void setAckMode(String ackMode) {
+
+		if (ackMode == null || ackMode.isEmpty()) {
+			return;
+		}
 		if ("CLIENT_ACKNOWLEDGE".equalsIgnoreCase(ackMode)) {
 			this.ackMode = Session.CLIENT_ACKNOWLEDGE;
 		}
@@ -174,6 +203,14 @@ public class ConsumerTool {
 		if ("SESSION_TRANSACTED".equalsIgnoreCase(ackMode)) {
 			this.ackMode = Session.SESSION_TRANSACTED;
 		}
+	}
+
+	public void onException(JMSException ex) {
+		System.out.println("JMS Exception occured.  Shutting down client.");
+		ex.printStackTrace();
+		threadPool.shutdown();
+		System.exit(1);
+
 	}
 
 	public boolean isPersistent() {
@@ -411,10 +448,71 @@ public class ConsumerTool {
 	}
 
 	/**
-	 * @param unsubscribe the unsubscribe to set
+	 * @param unsubscribe
+	 *            the unsubscribe to set
 	 */
 	public void setUnsubscribe(boolean unsubscribe) {
 		this.unsubscribe = unsubscribe;
+	}
+
+	/**
+	 * @return the batchCount
+	 */
+	public int getBatchCount() {
+		return batchCount;
+	}
+
+	/**
+	 * @param batchCount
+	 *            the batchCount to set
+	 */
+	public void setBatchCount(int batchCount) {
+		this.batchCount = batchCount;
+	}
+
+	/**
+	 * @return the shareConnection
+	 */
+	public boolean isShareConnection() {
+		return shareConnection;
+	}
+
+	/**
+	 * @param shareConnection
+	 *            the shareConnection to set
+	 */
+	public void setShareConnection(boolean shareConnection) {
+		this.shareConnection = shareConnection;
+	}
+
+	/**
+	 * @return the connection
+	 */
+	public Connection getConnection() {
+		return connection;
+	}
+
+	/**
+	 * @param connection
+	 *            the connection to set
+	 */
+	public void setConnection(Connection connection) {
+		this.connection = connection;
+	}
+
+	/**
+	 * @return the batchRandom
+	 */
+	public boolean isBatchRandom() {
+		return batchRandom;
+	}
+
+	/**
+	 * @param batchRandom
+	 *            the batchRandom to set
+	 */
+	public void setBatchRandom(boolean batchRandom) {
+		this.batchRandom = batchRandom;
 	}
 
 }

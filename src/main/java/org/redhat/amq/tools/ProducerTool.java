@@ -40,11 +40,13 @@ public class ProducerTool {
 	private boolean rollback;
 	private boolean help;
 	private long messageCount = 10000L;
-	private long sampleSize = 10000L;
+	private long sampleSize = 5000L;
 	private long sleepTime;
 	private long timeToLive;
+	private long batchSleep;
 	private int transactedBatchSize = 1;
 	private int messageSize = 255;
+	private int batchCount = 1;
 	private int priority = -1;
 	private int threadCount = 1;
 	private CountDownLatch latch;
@@ -64,6 +66,8 @@ public class ProducerTool {
 		+ "[messageSize=<size of msg to send>]        default: " + messageSize + "\n" 
 		+ "[messageCount=<# of msgs to send>]         default: " + messageCount + "\n" 
 		+ "[sampleSize=<# of msgs to sample>]         default: " + sampleSize + "\n"
+		+ "[batchCount=<# of msg batches to send]     default: " + batchCount + "\n"
+		+ "[batchSleep=<sleep time between batch>]    default: " + batchSleep + "\n"
 		+ "[threadCount=<# of producer threads]       default: 1\n" 
 		+ "[transactedBatchSize=<trx batch size>]     default: 1\n" 					
 		+ "[transacted]                               default: false\n" 
@@ -125,6 +129,8 @@ public class ProducerTool {
 			System.out.println("sampleSize           = " + sampleSize);		
 			System.out.println("messageCount         = " + messageCount);	
 			System.out.println("messageSize          = " + messageSize);
+			System.out.println("batchCount           = " + batchCount);
+			System.out.println("batchSleep           = " + batchSleep);
 			System.out.println("threadCount          = " + threadCount);
 			System.out.println("sleepTime            = " + sleepTime);
 			System.out.println("timeToLive           = " + timeToLive);
@@ -276,47 +282,26 @@ public class ProducerTool {
 		return sampleSize;
 	}
 
-	/**
-	 * @return the help
-	 */
 	public boolean isHelp() {
 		return help;
 	}
 
-	/**
-	 * @param help
-	 *            the help to set
-	 */
 	public void setHelp(boolean help) {
 		this.help = help;
 	}
 
-	/**
-	 * @return the group
-	 */
 	public String getGroup() {
 		return group;
 	}
 
-	/**
-	 * @param group
-	 *            the group to set
-	 */
 	public void setGroup(String group) {
 		this.group = group;
 	}
 
-	/**
-	 * @return the priority
-	 */
 	public int getPriority() {
 		return priority;
 	}
 
-	/**
-	 * @param priority
-	 *            the priority to set
-	 */
 	public void setPriority(int priority) throws IllegalArgumentException {
 		if (priority >= 0 && priority <= 9) {
 			this.priority = priority;
@@ -403,6 +388,36 @@ public class ProducerTool {
 	 */
 	public void setReply(boolean reply) {
 		this.reply = reply;
+	}
+
+	/**
+	 * @return the batchCount
+	 */
+	public int getBatchCount() {
+		return batchCount;
+	}
+
+	/**
+	 * @param batchCount
+	 *            the batchCount to set
+	 */
+	public void setBatchCount(int batchCount) {
+		this.batchCount = batchCount;
+	}
+
+	/**
+	 * @return the batchSleep
+	 */
+	public long getBatchSleep() {
+		return batchSleep;
+	}
+
+	/**
+	 * @param batchSleep
+	 *            the batchSleep to set
+	 */
+	public void setBatchSleep(long batchSleep) {
+		this.batchSleep = batchSleep;
 	}
 
 }

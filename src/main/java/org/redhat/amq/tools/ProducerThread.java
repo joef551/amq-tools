@@ -15,16 +15,14 @@ package org.redhat.amq.tools;
 
 import java.util.Date;
 import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
-
-import javax.jms.BytesMessage;
 import javax.jms.Connection;
 import javax.jms.DeliveryMode;
 import javax.jms.Destination;
 import javax.jms.Message;
 import javax.jms.MessageConsumer;
 import javax.jms.MessageProducer;
-import javax.jms.ObjectMessage;
 import javax.jms.Session;
 import javax.jms.TextMessage;
 
@@ -33,18 +31,22 @@ import org.apache.activemq.ActiveMQConnectionFactory;
 public class ProducerThread implements Runnable {
 
 	private static final String JMSXGROUPID = "JMSXGroupID";
+	private static final String JMSXGROUPSEQ = "JMSXGroupSeq";
+	private static final String RANDOMGROUP = "random";
 	private ProducerTool pt;
 	private Destination destination;
 	private int threadID;
 	private Connection connection;
 	private CountDownLatch latch;
-	private long msgsSent = 1L;
+	private int msgsSent = 1;
+	private long totalMsgsSent = 0L;
 	private long milliStart;
 	private long milliLast;
 	private int transactedBatchCount;
 	private StringBuffer strBuffer;
 	private Destination tempDest;
 	private MessageConsumer consumer;
+	private String batchGroup;
 
 	public ProducerThread(ProducerTool pt, int threadID, CountDownLatch latch) {
 		this.pt = pt;
@@ -79,8 +81,9 @@ public class ProducerThread implements Runnable {
 
 			MessageProducer producer = session.createProducer(destination);
 
-			// if requested to do so, implement request-reply pattern, but
-			// only if transacted is set to false
+			// if requested to do so, implement request-reply pattern
+			// NB: Ignored if (transacted == 'true' and (transactedBatchSize > 1
+			// or rollback == 'true'))
 			if (isReply()) {
 				log("implementing request-reply");
 				tempDest = session.createTemporaryQueue();
@@ -99,7 +102,7 @@ public class ProducerThread implements Runnable {
 				producer.setTimeToLive(getTimeToLive());
 			}
 
-			// specify whther messages have a priority
+			// specify whether messages have a priority
 			if (getPriority() >= 0) {
 				producer.setPriority(getPriority());
 			}
@@ -107,7 +110,13 @@ public class ProducerThread implements Runnable {
 			// Start sending the messages
 			log("Producing ...");
 
-			sendLoop(session, producer);
+			int batchCounter = getBatchCount();
+			do {
+				sendBatch(session, producer);
+				if (--batchCounter > 0 && getBatchSleep() > 0) {
+					Thread.sleep(getBatchSleep());
+				}
+			} while (batchCounter > 0);
 
 		} catch (Exception e) {
 			System.out.println("Caught: " + e);
@@ -125,41 +134,49 @@ public class ProducerThread implements Runnable {
 
 	}
 
-	protected void sendLoop(Session session, MessageProducer producer)
+	/**
+	 * Send a batch of messages, the number of messages in a batch is specified
+	 * by messageCount
+	 * 
+	 * @param session
+	 * @param producer
+	 * @throws Exception
+	 */
+	protected void sendBatch(Session session, MessageProducer producer)
 			throws Exception {
 
 		milliStart = System.currentTimeMillis();
 		milliLast = milliStart;
-		
+
 		long countLast = 0;
 		boolean rolledBack = false;
 
+		// if insructed to do so, use JMSXGROUPID
+		if (getGroup() != null) {
+			// if instructed to do so, create a random group name for this batch
+			// of messages
+			if (getGroup().equalsIgnoreCase(RANDOMGROUP)) {
+				setBatchGroup(UUID.randomUUID().toString());
+			} else {
+				setBatchGroup(getGroup());
+			}
+			// log("Using this batch group: " + getBatchGroup());
+		}
+
 		// send messageCount number of messages
-		for (msgsSent = 1; msgsSent <= getMessageCount(); msgsSent++) {
+		for (msgsSent = 1; msgsSent <= getMessageCount(); msgsSent++, totalMsgsSent++) {
 
 			TextMessage message = session
-					.createTextMessage(createMessageText(msgsSent));
+					.createTextMessage(createMessageText(totalMsgsSent));
 
-			// Message message =
-			// session.createObjectMessage(createMessageText(msgsSent));
-			// ObjectMessage message = session.createObjectMessage();
-			// message.setObject(createMessageText(msgsSent));
-
-			// BytesMessage message = session.createBytesMessage();
-			// message.writeBytes(createMessageText(msgsSent).getBytes());
-
-			// ObjectMessage message =
-			// session.createObjectMessage(createMessageText(msgsSent));
-
-			/**
-			 * if (isVerbose()) { String msg = message.getText(); if
-			 * (msg.length() > 50) { msg = msg.substring(0, 50) + "..."; }
-			 * log("Sending : " + msg); }
-			 **/
-
-			// if insructed to do so, use JMSXGROUPID
 			if (getGroup() != null) {
-				message.setStringProperty(JMSXGROUPID, getGroup());
+				message.setStringProperty(JMSXGROUPID, getBatchGroup());
+				if (msgsSent != getMessageCount()) {
+					message.setIntProperty(JMSXGROUPSEQ, msgsSent);
+				} else {
+					// if last message in batch, then close the group sequence
+					message.setIntProperty(JMSXGROUPSEQ, -1);
+				}
 			}
 
 			// if instructed to do so implement request-reply, but only if
@@ -215,9 +232,8 @@ public class ProducerThread implements Runnable {
 				long rateOverall = (1000 * msgsSent)
 						/ (milliCurrent - milliStart);
 
-				log(msgsSent + " messages sent, sample rate = "
-						+ rateInterval + "/sec, overall rate = " + rateOverall
-						+ "/sec");
+				log(msgsSent + " messages sent, sample rate = " + rateInterval
+						+ "/sec, overall rate = " + rateOverall + "/sec");
 
 				// record this last sample time
 				milliLast = milliCurrent;
@@ -330,7 +346,18 @@ public class ProducerThread implements Runnable {
 	}
 
 	private boolean isReply() {
+		if (isTransacted() && (getTransactedBatchSize() > 1 || isRollback())) {
+			return false;
+		}
 		return pt.isReply();
+	}
+
+	public int getBatchCount() {
+		return pt.getBatchCount();
+	}
+
+	public long getBatchSleep() {
+		return pt.getBatchSleep();
 	}
 
 	private String createRandomString() {
@@ -345,7 +372,7 @@ public class ProducerThread implements Runnable {
 		public void run() {
 			System.out.println("[" + getThreadID()
 					+ "] detected shutdown - total messages sent = "
-					+ (msgsSent - 1));
+					+ (totalMsgsSent));
 		}
 	}
 
@@ -441,6 +468,36 @@ public class ProducerThread implements Runnable {
 	 */
 	public void setConsumer(MessageConsumer consumer) {
 		this.consumer = consumer;
+	}
+
+	/**
+	 * @return the batchGroup
+	 */
+	public String getBatchGroup() {
+		return batchGroup;
+	}
+
+	/**
+	 * @param batchGroup
+	 *            the batchGroup to set
+	 */
+	public void setBatchGroup(String batchGroup) {
+		this.batchGroup = batchGroup;
+	}
+
+	/**
+	 * @return the totalMsgsSent
+	 */
+	public long getTotalMsgsSent() {
+		return totalMsgsSent;
+	}
+
+	/**
+	 * @param totalMsgsSent
+	 *            the totalMsgsSent to set
+	 */
+	public void setTotalMsgsSent(long totalMsgsSent) {
+		this.totalMsgsSent = totalMsgsSent;
 	}
 
 }

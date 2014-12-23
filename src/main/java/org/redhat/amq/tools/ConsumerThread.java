@@ -14,6 +14,7 @@
 package org.redhat.amq.tools;
 
 import java.io.IOException;
+import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 
 import javax.jms.Connection;
@@ -46,11 +47,14 @@ public class ConsumerThread implements Runnable, MessageListener,
 	private Session session;
 	private boolean running;
 	private CountDownLatch latch;
+	private Random randomizer;
 
-	public ConsumerThread(ConsumerTool ct, int threadID, CountDownLatch latch) {
+	public ConsumerThread(ConsumerTool ct, int threadID, CountDownLatch latch,
+			Connection connection) {
 		this.ct = ct;
 		this.threadID = threadID;
 		this.latch = latch;
+		this.connection = connection;
 	}
 
 	public void run() {
@@ -70,14 +74,19 @@ public class ConsumerThread implements Runnable, MessageListener,
 		try {
 			System.out.println("Consumer " + getThreadID() + " has started");
 
-			log("Creating connection...");
-			connection = getConnectionFactory().createConnection();
 			if (connection == null) {
-				System.out.println(getThreadID()
-						+ ": Error, unable to acquire connection");
-				return;
+				log("Creating connection...");
+				connection = getConnectionFactory().createConnection();
+				if (connection == null) {
+					System.out.println(getThreadID()
+							+ ": Error, unable to acquire connection");
+					return;
+				}
+			} else {
+				log("Sharing connection...");
 			}
 
+			// TODO: You cannot share a connection and do the following!!
 			if (isDurable() && isTopic() && getClientId() != null
 					&& !getClientId().isEmpty()
 					&& !"null".equals(getClientId())) {
@@ -86,15 +95,16 @@ public class ConsumerThread implements Runnable, MessageListener,
 				connection.setClientID(getConsumerName() + getThreadID());
 			}
 
-			connection.setExceptionListener(this);
+			if (!isShareConnection()) {
+				connection.setExceptionListener(this);
+				log("Starting connection...");
+				connection.start();
+				log("Connection started");
+			}
 
-			log("Starting connection...");
-			connection.start();
-			log("Connection started");
-
-			// the ack mode is ignored if the session is transacted
 			log("Creating session...");
 
+			// the ack mode is ignored if the session is transacted
 			session = (isTransacted()) ? connection.createSession(true, 0)
 					: connection.createSession(false, getAckMode());
 
@@ -109,35 +119,30 @@ public class ConsumerThread implements Runnable, MessageListener,
 				replyProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
 			}
 
-			MessageConsumer consumer = null;
-			if (isDurable() && isTopic()) {
-				log("creating durable subscriber...");
-				consumer = session.createDurableSubscriber((Topic) destination,
-						getConsumerName() + getThreadID());
-			} else {
-				consumer = (getSelector() == null) ? session
-						.createConsumer(destination) : session.createConsumer(
-						destination, getSelector());
-			}
-
 			log("Ready to consume");
-
 			if (getMaxMessages() > 0) {
 				// receive until the specified max number of messages
-				// has been received
-				consumeMessagesAndClose(connection, session, consumer);
+				// has been received. note that there may be many batches to
+				// consume with different consumers
+				int batchCounter = getBatchCount();
+				do {
+					consumeMessagesAndClose(connection, session,
+							createConsumer());
+				} while (--batchCounter != 0);
+				closeThings(session, connection);
 			} else if (getReceiveTimeOut() == 0) {
 				// receive indefinitely
+				MessageConsumer consumer = createConsumer();
 				consumer.setMessageListener(this);
 				listener = true;
 			} else {
 				// consume indefinitely, as long as messages
 				// continue to arrive within the specified
 				// timeout period
-				consumeMessagesAndClose(connection, session, consumer,
+				consumeMessagesAndClose(connection, session, createConsumer(),
 						getMaxMessages());
+				closeThings(session, connection);
 			}
-
 		} catch (Exception e) {
 			System.out.println("Caught: " + e);
 			e.printStackTrace();
@@ -202,7 +207,7 @@ public class ConsumerThread implements Runnable, MessageListener,
 			// If requested, reply to the message, but only if the session is
 			// not transacted.
 			if (!isTransacted() && message.getJMSReplyTo() != null) {
-				if(isVerbose()){
+				if (isVerbose()) {
 					log("replying");
 				}
 				replyProducer.send(
@@ -218,12 +223,16 @@ public class ConsumerThread implements Runnable, MessageListener,
 			}
 
 			if (++msgCount == getSampleSize()) {
-				double intervalTime = System.currentTimeMillis() - milliStart;
-				System.out.println("intervalTime = " + intervalTime);
+				long currentTime = System.currentTimeMillis();
+				double intervalTime = currentTime - milliStart;
 				if (intervalTime > 0L) {
 					double intervalRate = (double) getSampleSize()
 							/ (intervalTime / 1000.00);
-					System.out.println("Messages per second = " + intervalRate);
+					System.out.println("[" + getThreadID()
+							+ "] Current time = " + (currentTime / 1000) + "s "
+							+ "Interval time = " + intervalTime
+							+ " Total msg count = " + countLast
+							+ " Mgs per second = " + intervalRate);
 				}
 				msgCount = 0;
 			}
@@ -246,6 +255,32 @@ public class ConsumerThread implements Runnable, MessageListener,
 		return running;
 	}
 
+	private MessageConsumer createConsumer() throws Exception {
+		MessageConsumer consumer;
+		if (isDurable() && isTopic()) {
+			log("creating durable subscriber...");
+			consumer = session.createDurableSubscriber((Topic) destination,
+					getConsumerName() + getThreadID());
+		} else {
+			consumer = (getSelector() == null) ? session
+					.createConsumer(destination) : session.createConsumer(
+					destination, getSelector());
+		}
+		return consumer;
+	}
+
+	private void closeThings(Session session, Connection connection) {
+		try {
+			if (session != null) {
+				session.close();
+			}
+			if (!isShareConnection() && connection != null) {
+				connection.close();
+			}
+		} catch (Exception ignore) {
+		}
+	}
+
 	/**
 	 * Receive messages up until the specifed max number of messages.
 	 * 
@@ -259,27 +294,28 @@ public class ConsumerThread implements Runnable, MessageListener,
 			Session session, MessageConsumer consumer) throws JMSException,
 			IOException {
 
-		log("We are about to wait until we consume: " + getMaxMessages()
-				+ " message(s), then we will shutdown");
-		try {
-
-			for (long i = 0; i < getMaxMessages() && isRunning();) {
-				Message message = consumer.receive(1000);
-				if (message != null) {
-					i++;
-					onMessage(message);
-				}
-			}
-			log(getThreadID()
-					+ ":read max number of messages, closing connection");
-			consumer.close();
-			if (isDurable() && isTopic() && isUnsubscribe()) {
-				session.unsubscribe(getConsumerName() + getThreadID());
-			}
-		} finally {
-			session.close();
-			connection.close();
+		// log("We are about to wait until we consume: " + getMaxMessages()
+		// + " message(s), then we will shutdown");
+		// if requested to do so, randomize the batch count a little
+		long msgCount = getMaxMessages();
+		if (isBatchRandom()) {
+			msgCount += getRandomizer().nextInt(11);
 		}
+
+		for (long i = 0; i < msgCount && isRunning();) {
+			Message message = consumer.receive(1000);
+			if (message != null) {
+				i++;
+				onMessage(message);
+			}
+		}
+		// log(getThreadID() + ":read max number of messages ["
+		// + getMaxMessages() + "], closing consumer");
+		consumer.close();
+		if (isDurable() && isTopic() && isUnsubscribe()) {
+			session.unsubscribe(getConsumerName() + getThreadID());
+		}
+
 	}
 
 	/**
@@ -296,8 +332,8 @@ public class ConsumerThread implements Runnable, MessageListener,
 			Session session, MessageConsumer consumer, long timeout)
 			throws JMSException, IOException {
 
-		log("Consuming as long as messages continue to arrive within: "
-				+ timeout + " ms");
+		// log("Consuming as long as messages continue to arrive within: "
+		// + timeout + " ms");
 
 		Message message = null;
 		while ((message = consumer.receive(timeout)) != null && isRunning()) {
@@ -310,8 +346,8 @@ public class ConsumerThread implements Runnable, MessageListener,
 		if (isDurable() && isTopic() && isUnsubscribe()) {
 			session.unsubscribe(getConsumerName());
 		}
-		session.close();
-		connection.close();
+		// session.close();
+		// connection.close();
 	}
 
 	private void log(String str) {
@@ -320,84 +356,99 @@ public class ConsumerThread implements Runnable, MessageListener,
 		}
 	}
 
-	public ActiveMQConnectionFactory getConnectionFactory() {
+	private ActiveMQConnectionFactory getConnectionFactory() {
 		return ct.getConnectionFactory();
 	}
 
-	public int getThreadID() {
+	private int getThreadID() {
 		return threadID;
 	}
 
-	public void setThreadID(int threadID) {
-		this.threadID = threadID;
-	}
-
-	public long getSampleSize() {
+	private long getSampleSize() {
 		return ct.getSampleSize();
 	}
 
-	public boolean isTransacted() {
+	private boolean isTransacted() {
 		return ct.isTransacted();
 	}
 
-	public boolean isVerbose() {
+	private boolean isVerbose() {
 		return ct.isVerbose();
 	}
 
-	public int getTransactedBatchSize() {
+	private int getTransactedBatchSize() {
 		return ct.getTransactedBatchSize();
 	}
 
-	public boolean isTopic() {
+	private boolean isTopic() {
 		return ct.isTopic();
 	}
 
-	public boolean isDurable() {
+	private boolean isDurable() {
 		return ct.isDurable();
 	}
 
-	public boolean isPersistent() {
+	private boolean isPersistent() {
 		return ct.isPersistent();
 	}
 
-	public boolean isRollback() {
+	private boolean isRollback() {
 		return ct.isRollback();
 	}
 
-	public String getClientId() {
+	private String getClientId() {
 		return ct.getClientId();
 	}
 
-	public int getAckMode() {
+	private int getAckMode() {
 		return ct.getAckMode();
 	}
 
-	public String getConsumerName() {
+	private String getConsumerName() {
 		return ct.getConsumerName();
 	}
 
-	public long getMaxMessages() {
+	private long getMaxMessages() {
 		return ct.getMaxMessages();
 	}
 
-	public long getReceiveTimeOut() {
+	private long getReceiveTimeOut() {
 		return ct.getReceiveTimeOut();
 	}
 
-	public long getSleepTime() {
+	private long getSleepTime() {
 		return ct.getSleepTime();
 	}
 
-	public String getSubject() {
+	private String getSubject() {
 		return ct.getSubject();
 	}
 
-	public String getSelector() {
+	private String getSelector() {
 		return ct.getSelector();
 	}
 
-	public boolean isUnsubscribe() {
+	private boolean isUnsubscribe() {
 		return ct.isUnsubscribe();
+	}
+
+	private int getBatchCount() {
+		return ct.getBatchCount();
+	}
+
+	private boolean isShareConnection() {
+		return ct.isShareConnection();
+	}
+
+	private boolean isBatchRandom() {
+		return ct.isBatchRandom();
+	}
+
+	private Random getRandomizer() {
+		if (randomizer == null) {
+			randomizer = new Random();
+		}
+		return randomizer;
 	}
 
 }
