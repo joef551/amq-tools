@@ -179,6 +179,12 @@ public class ProducerThread implements Runnable {
 				}
 			}
 
+			if (getHeader() != null) {
+				message.setStringProperty(getHeader(), getHeaderValue());
+			}
+
+			// message.setStringProperty("fooheader", "foobar");
+
 			// if instructed to do so implement request-reply, but only if
 			// non-transacted mode
 			if (isReply()) {
@@ -325,16 +331,20 @@ public class ProducerThread implements Runnable {
 		return pt.getSleepTime();
 	}
 
-	private boolean isVerbose() {
-		return pt.isVerbose();
-	}
-
 	private String getSubject() {
 		return pt.getSubject();
 	}
 
 	private long getTimeToLive() {
 		return pt.getTimeToLive();
+	}
+
+	private String getHeader() {
+		return pt.getHeader();
+	}
+
+	private String getHeaderValue() {
+		return pt.getHeaderValue();
 	}
 
 	private boolean isTopic() {

@@ -32,6 +32,8 @@ public class ProducerTool {
 	private String subject = "TOOL.DEFAULT";
 	private String message;
 	private String group;
+	private String header;
+	private String headerValue;
 	private boolean topic;
 	private boolean transacted;
 	private boolean persistent;
@@ -61,6 +63,7 @@ public class ProducerTool {
 		+ "[group=<group id>]                         default: " + "null" + "\n" 
 		+ "[priority=<priority (0-9)>]                default: " + "not set" + "\n" 
 		+ "[timeToLive=<msg time to live>]            default: " + "not set" + "\n" 
+		+ "[header=<key:value>]                       default: not set\n" 
 		+ "[sleepTime=<sleep time between each send>] default: " + sleepTime + "\n" 
 		+ "[message=<msg-to-send>]                    default: one will be created\n" 
 		+ "[messageSize=<size of msg to send>]        default: " + messageSize + "\n" 
@@ -69,7 +72,7 @@ public class ProducerTool {
 		+ "[batchCount=<# of msg batches to send]     default: " + batchCount + "\n"
 		+ "[batchSleep=<sleep time between batch>]    default: " + batchSleep + "\n"
 		+ "[threadCount=<# of producer threads]       default: 1\n" 
-		+ "[transactedBatchSize=<trx batch size>]     default: 1\n" 					
+		+ "[transactedBatchSize=<trx batch size>]     default: 1\n"		
 		+ "[transacted]                               default: false\n" 
 		+ "[durable]                                  default: false\n" 
 		+ "[persistent]                               default: false \n" 
@@ -123,6 +126,8 @@ public class ProducerTool {
 			System.out.println("message              = " + getMessage());
 			System.out.println("topic                = " + topic);			
 			System.out.println("group                = " + group);
+			System.out.println("header               = " + header);
+			System.out.println("headerValue          = " + headerValue);
 			System.out.println("persistent           = " + persistent);
 			System.out.println("transacted           = " + transacted);
 			System.out.println("rollback             = " + rollback);			
@@ -418,6 +423,54 @@ public class ProducerTool {
 	 */
 	public void setBatchSleep(long batchSleep) {
 		this.batchSleep = batchSleep;
+	}
+
+	/**
+	 * @return the header
+	 */
+	public String getHeader() {
+		return header;
+	}
+
+	/**
+	 * @param header
+	 *            the header to set
+	 */
+	public void setHeader(String header) throws IllegalArgumentException {
+
+		if (header == null || header.isEmpty()) {
+			return;
+		}
+
+		String[] tokens = header.split(":");
+
+		if (tokens == null || tokens.length != 2) {
+			throw new IllegalArgumentException("ERROR: invalid header: "
+					+ header);
+		} else if (tokens[0].isEmpty()) {
+			throw new IllegalArgumentException("ERROR: invalid header key: "
+					+ tokens[0]);
+		} else if (tokens[1].isEmpty()) {
+			throw new IllegalArgumentException("ERROR: invalid header value: "
+					+ tokens[1]);
+		}
+		this.header = tokens[0].trim();
+		this.headerValue = tokens[1].trim();
+	}
+
+	/**
+	 * @return the headerValue
+	 */
+	public String getHeaderValue() {
+		return headerValue;
+	}
+
+	/**
+	 * @param headerValue
+	 *            the headerValue to set
+	 */
+	public void setHeaderValue(String headerValue) {
+		this.headerValue = headerValue;
 	}
 
 }

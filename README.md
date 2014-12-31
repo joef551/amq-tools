@@ -73,7 +73,7 @@ Note in the project's pom.xml that the version of the ActiveMQ client libraries 
 Consumer Options
 ----------------
 
- Option    | Default   | Description 
+ Option    | Default Value | Description 
 :------    | :------   | :-----------
 ackMode    | AUTO_ACKNOWLEDGE  | The acknowledgement mode to be used by the consumer. Other possible values are CLIENT_ACKNOWLEDGE and DUPS_OK_ACKNOWLEDGE. **Ignored if transacted (see below) is set to true.**
 consumerName | Fred | The client identification string to use when establishing a durable topic subscriber. Only used if durable and topic are set to true. 
@@ -91,7 +91,7 @@ Producer Options
 ----------------
 
 
- Option    | Default   | Description 
+ Option    | Default Value  | Description 
 :------    | :------   | :-----------
 messageCount	|10000|	The number of messages to produce.
 messageSize |255 |	The size of the message that is produced.  persistent|	false |	Whether to send persistent or non-persistent messages.
@@ -99,6 +99,7 @@ priority|not set | The JMS priority to assign to the messagessampleSize |	10000
 password |	admin |	The password that is used for establishing a connection with ActiveMQ.verbose|false|	When set to true, each message that is produced is written out to the console.
 threadCount | 1 | The number of consumer threads to spawn. 
 group | null | The group name to assign to the JMSXGROUPID header
+header|null|A custom header (property) to be assigned to each message produced. The supplied value must be in the form of "key:value". For example, header=foo:bar, where 'foo' is header key (name) and 'bar' is its value.  
 help | false | use only for displaying all producer options (e.g., runp help) 
 
 
