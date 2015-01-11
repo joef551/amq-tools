@@ -1,3 +1,4 @@
 #!/bin/bash
 
-mvn exec:java -Dexec.mainClass="org.redhat.amq.tools.ProducerTool" -Dexec.args="$*"   
+#mvn exec:java -Dexec.mainClass="org.redhat.amq.tools.ProducerTool" -Dexec.args="$*"   
+java -cp ./target/uber-amq-tools.jar org.redhat.amq.tools.ProducerTool $*

@@ -1,4 +1,5 @@
 #!/bin/bash
 
 export CLASSPATH=.:$CLASSPATH
-mvn exec:java -Dexec.mainClass="org.redhat.amq.tools.ConsumerTool" -Dexec.args="$*"   
+#mvn exec:java -Dexec.mainClass="org.redhat.amq.tools.ConsumerTool" -Dexec.args="$*"   
+java -cp ./target/uber-amq-tools.jar org.redhat.amq.tools.ConsumerTool $*
