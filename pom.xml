@@ -6,19 +6,21 @@
 	<artifactId>amq-tools</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
-	<description>Simple A-MQ Consumer and Producer Perf Tools</description>
+	<description>Simple A-MQ Consumer and Producer Tools</description>
+	<properties>
+		<spring.version>4.0.5.RELEASE</spring.version>
+		<slf4j.version>1.7.7</slf4j.version>
+		<activemq.version>5.9.0.redhat-610379</activemq.version>		
+		<!-- <activemq.version>5.8.0.redhat-60024</activemq.version> -->
+		<!-- <activemq.version>5.8.0.redhat-60065</activemq.version> -->
+	</properties>
 
 	<dependencies>
 		<dependency>
 			<groupId>org.apache.activemq</groupId>
 			<artifactId>activemq-all</artifactId>
-			<version>5.9.0.redhat-610379</version>  
-			<!-- <version>5.8.0.redhat-60024</version> -->
-			<!-- <version>5.8.0.redhat-60065</version> -->
+			<version>${activemq.version}</version>			
 		</dependency>
-		<!-- <dependency> <groupId>org.slf4j</groupId> <artifactId>slf4j-api</artifactId> 
-			<version>1.7.7</version> </dependency> -->
-
 		<!-- Allows the client to connect via HTTP -->
 		<dependency>
 			<groupId>org.apache.httpcomponents</groupId>
@@ -34,65 +36,38 @@
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-log4j12</artifactId>
 			<version>1.7.7</version>
-		</dependency>
-		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>
-			<version>4.11</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework</groupId>
-			<artifactId>spring-context</artifactId>
-			<version>3.2.4.RELEASE</version>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework</groupId>
-			<artifactId>spring-jms</artifactId>
-			<version>3.2.4.RELEASE</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.activemq</groupId>
-			<artifactId>activemq-client</artifactId>
-			<version>5.8.0</version>
-		</dependency>
+		</dependency>			
 	</dependencies>
 
 	<build>
-		<finalName>perftool</finalName>
-		<pluginManagement>
-			<plugins>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-surefire-plugin</artifactId>
-					<version>2.16</version>
-					<configuration>
-						<systemPropertyVariables>
-							<serverurl>${env.serverurl}</serverurl>
-						</systemPropertyVariables>
-					</configuration>
-				</plugin>
-				<!-- Specify Java 7 for this project -->
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-compiler-plugin</artifactId>
-					<version>3.1</version>
-					<configuration>
-						<source>1.7</source>
-						<target>1.7</target>
-					</configuration>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-assembly-plugin</artifactId>
-					<version>2.4</version>
-					<configuration>
-						<discriptors>
-							<descriptor>pkg-descriptor.xml</descriptor>
-						</discriptors>
-					</configuration>
-				</plugin>
-			</plugins>
-		</pluginManagement>
+		<finalName>amq-tools</finalName>
+		<plugins>
+			<!-- Specify Java 7 for this project -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.1</version>
+				<configuration>
+					<source>1.7</source>
+					<target>1.7</target>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-shade-plugin</artifactId>
+				<version>2.3</version>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>shade</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<finalName>uber-amq-tools</finalName>
+				</configuration>
+			</plugin>
+		</plugins>
 	</build>
 </project>
