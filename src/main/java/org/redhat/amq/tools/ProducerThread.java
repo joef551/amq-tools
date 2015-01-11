@@ -28,6 +28,10 @@ import javax.jms.TextMessage;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
 
+/**
+ * Worker thread launched by the ProducerTool
+ * 
+ */
 public class ProducerThread implements Runnable {
 
 	private static final String JMSXGROUPID = "JMSXGroupID";
@@ -37,7 +41,6 @@ public class ProducerThread implements Runnable {
 	private Destination destination;
 	private int threadID;
 	private Connection connection;
-	private CountDownLatch latch;
 	private int msgsSent = 1;
 	private long totalMsgsSent = 0L;
 	private long milliStart;
@@ -48,10 +51,9 @@ public class ProducerThread implements Runnable {
 	private MessageConsumer consumer;
 	private String batchGroup;
 
-	public ProducerThread(ProducerTool pt, int threadID, CountDownLatch latch) {
+	public ProducerThread(ProducerTool pt, int threadID) {
 		this.pt = pt;
 		this.setThreadID(threadID);
-		this.setLatch(latch);
 	}
 
 	public void run() {
@@ -129,7 +131,7 @@ public class ProducerThread implements Runnable {
 				}
 			}
 			// countdown the latch indicating this thread is done
-			latch.countDown();
+			getLatch().countDown();
 		}
 
 	}
@@ -362,6 +364,10 @@ public class ProducerThread implements Runnable {
 		return pt.isReply();
 	}
 
+	public CountDownLatch getLatch() {
+		return pt.getLatch();
+	}
+
 	public int getBatchCount() {
 		return pt.getBatchCount();
 	}
@@ -433,21 +439,6 @@ public class ProducerThread implements Runnable {
 	 */
 	public void setConnection(Connection connection) {
 		this.connection = connection;
-	}
-
-	/**
-	 * @return the latch
-	 */
-	public CountDownLatch getLatch() {
-		return latch;
-	}
-
-	/**
-	 * @param latch
-	 *            the latch to set
-	 */
-	public void setLatch(CountDownLatch latch) {
-		this.latch = latch;
 	}
 
 	/**

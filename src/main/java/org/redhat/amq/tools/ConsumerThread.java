@@ -46,14 +46,11 @@ public class ConsumerThread implements Runnable, MessageListener,
 	private long milliStart;
 	private Session session;
 	private boolean running;
-	private CountDownLatch latch;
 	private Random randomizer;
 
-	public ConsumerThread(ConsumerTool ct, int threadID, CountDownLatch latch,
-			Connection connection) {
+	public ConsumerThread(ConsumerTool ct, int threadID, Connection connection) {
 		this.ct = ct;
 		this.threadID = threadID;
-		this.latch = latch;
 		this.connection = connection;
 	}
 
@@ -148,7 +145,7 @@ public class ConsumerThread implements Runnable, MessageListener,
 			e.printStackTrace();
 		} finally {
 			if (!listener) {
-				latch.countDown();
+				getLatch().countDown();
 			}
 		}
 	}
@@ -169,6 +166,7 @@ public class ConsumerThread implements Runnable, MessageListener,
 				}
 			}
 
+			// Increment the total message count
 			++countLast;
 
 			// if instructed to do so, sleep in between reads
@@ -228,11 +226,10 @@ public class ConsumerThread implements Runnable, MessageListener,
 				if (intervalTime > 0L) {
 					double intervalRate = (double) getSampleSize()
 							/ (intervalTime / 1000.00);
-					System.out.println("[" + getThreadID()
-							+ "] Current time = " + (currentTime / 1000) + "s "
-							+ "Interval time = " + intervalTime
-							+ " Total msg count = " + countLast
-							+ " Mgs per second = " + intervalRate);
+					System.out.println("[" + getThreadID() + "]"
+							+ " Interval time = " + intervalTime
+							+ "\tTotal msg count = " + countLast
+							+ "\tMgs per second = " + intervalRate);
 				}
 				msgCount = 0;
 			}
@@ -358,6 +355,10 @@ public class ConsumerThread implements Runnable, MessageListener,
 
 	private ActiveMQConnectionFactory getConnectionFactory() {
 		return ct.getConnectionFactory();
+	}
+
+	private CountDownLatch getLatch() {
+		return ct.getLatch();
 	}
 
 	private int getThreadID() {

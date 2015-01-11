@@ -21,7 +21,7 @@ import org.apache.activemq.ActiveMQConnection;
 import org.apache.activemq.ActiveMQConnectionFactory;
 
 /**
- * A simple JMS tool for publishing messages
+ * A simple JMS producer tool for ActiveMQ
  */
 public class ProducerTool {
 
@@ -41,13 +41,13 @@ public class ProducerTool {
 	private boolean reply;
 	private boolean rollback;
 	private boolean help;
-	private long messageCount = 10000L;
+	private long messageCount = 5000L;
 	private long sampleSize = 5000L;
 	private long sleepTime;
 	private long timeToLive;
 	private long batchSleep;
 	private int transactedBatchSize = 1;
-	private int messageSize = 255;
+	private int messageSize = 256;
 	private int batchCount = 1;
 	private int priority = -1;
 	private int threadCount = 1;
@@ -105,7 +105,7 @@ public class ProducerTool {
 
 	public void start() {
 
-		// if end-user has request to use request-reply pattern and also
+		// if end-user has requested to use request-reply pattern and also
 		// requested a transacted session, then set request-reply back to false
 		// if rollback has been requested or transacted batch size is greater
 		// than 1
@@ -144,7 +144,7 @@ public class ProducerTool {
 			System.out.println("transactedBatchSize  = " + transactedBatchSize);
 			// @formatter:on
 
-			// Create the connection factory.
+			// Create the ActiveMQ connection factory.
 			connectionFactory = new ActiveMQConnectionFactory(user, password,
 					url);
 
@@ -154,7 +154,7 @@ public class ProducerTool {
 			// create the thread pool and start the consumer threads
 			setThreadPool(Executors.newFixedThreadPool(getThreadCount()));
 			for (int i = 1; i <= getThreadCount(); i++) {
-				getThreadPool().execute(new ProducerThread(this, i, latch));
+				getThreadPool().execute(new ProducerThread(this, i));
 			}
 
 			// wait for the producer threads to finish

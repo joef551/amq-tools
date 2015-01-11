@@ -57,7 +57,7 @@ public class ConsumerTool implements ExceptionListener {
 	private long receiveTimeOut;
 	private long milliStart;
 	private long maxMessages;
-	private long sampleSize = 10000L;
+	private long sampleSize = 5000L;
 	private ActiveMQConnectionFactory connectionFactory;
 	private Connection connection;
 	private ExecutorService threadPool;
@@ -158,7 +158,7 @@ public class ConsumerTool implements ExceptionListener {
 		// Create the connection factory used by the consumer threads
 		connectionFactory = new ActiveMQConnectionFactory(user, password, url);
 
-		if (shareConnection) {
+		if (isShareConnection()) {
 			connection = connectionFactory.createConnection();
 			connection.setExceptionListener(this);
 			System.out.println("Starting connection...");
@@ -167,12 +167,12 @@ public class ConsumerTool implements ExceptionListener {
 		}
 
 		// latch used to wait for consumer threads to complete
-		latch = new CountDownLatch(getThreadCount());
+		setLatch(new CountDownLatch(getThreadCount()));
 
 		// create the thread pool and start the consumer threads
 		threadPool = Executors.newFixedThreadPool(getThreadCount());
 		for (int i = 1; i <= getThreadCount(); i++) {
-			threadPool.execute(new ConsumerThread(this, i, latch, connection));
+			threadPool.execute(new ConsumerThread(this, i, connection));
 		}
 
 		// wait for the cosumers to finish
@@ -180,7 +180,7 @@ public class ConsumerTool implements ExceptionListener {
 		// shutdown the pool
 		threadPool.shutdown();
 
-		if (shareConnection) {
+		if (isShareConnection()) {
 			connection.close();
 		}
 		System.out.println("Run completed");
@@ -223,6 +223,14 @@ public class ConsumerTool implements ExceptionListener {
 
 	public int getAckMode() {
 		return ackMode;
+	}
+
+	public CountDownLatch getLatch() {
+		return latch;
+	}
+
+	public void setLatch(CountDownLatch latch) {
+		this.latch = latch;
 	}
 
 	public void setClientId(String clientID) {
