@@ -5,11 +5,13 @@ Simple Producer and Consumer Tool for ActiveMQ
 
 The idea behind this project is to provide an ActiveMQ client tool that can be used to simulate a variety of different client use-cases. 
 
-Run the following to do the initial build:
+Run the following to build the project:
+ 
+$ mvn clean package
 
-$ mvn clean install -Dmaven.test.skip=true
+The above will build two jar files in the project's target directory: amq-tools.jar and uber-amq-tools.jar. The former contains only the project's class files, while the latter also contains all of the project's dependencies. 
 
-Use the 'runp' and 'runc' scripts to run the producer and consumer, respectively. Some examples:
+From the project's home or top-level directory, use the 'runp' and 'runc' scripts to run the producer and consumer, respectively. Some examples:
 
 1. To display all producer options
 
@@ -35,7 +37,7 @@ Use the 'runp' and 'runc' scripts to run the producer and consumer, respectively
 
     $ runp persistent request 
 
-7. Connect consumer to broker as user Fred and password admin and consume from default subject with a selector of foo='bar'
+7. Connect consumer to broker as user Fred and password admin and consume from default queue with a selector of foo='bar'
 
 	$ runc user=Fred password=admin selector=foo=%27bar%27
 
@@ -44,10 +46,9 @@ Use the 'runp' and 'runc' scripts to run the producer and consumer, respectively
 	$ runc user=Fred password=admin threadCount=100 selector=foo=%27bar%27
 	
 
-9.	Same as above, but spawns 100 consumer threads, where they all share one connectionto the broker
+9.	Same as above, but spawns 100 consumer threads, where they all share one connection to the broker
 
 	$ runc user=Fred password=admin threadCount=100 selector=foo=%27bar%27 sharedConnection
-
 
 10. Connect the consumer to the broker using the given credentials and **http** transport. This assumes the broker has been assigned an http transport. 
 
@@ -62,12 +63,9 @@ ActiveMQ Version
 Note in the project's pom.xml that the version of the ActiveMQ client libraries being used is currently set at  `5.9.0.redhat-610379`. You will need to adjust it (i.e., comment and uncomment the lines below) according to the target ActiveMQ broker. 
 <br><br>
 
-
-`<version>5.9.0.redhat-610379</version>`
-
-`<!-- <version>5.8.0.redhat-60024</version> -->`
-
-`<!-- <version>5.8.0.redhat-60065</version> -->`
+	<activemq.version>5.9.0.redhat-610379</activemq.version>
+	<!-- <activemq.version>5.8.0.redhat-60024</activemq.version> -->
+	<!-- <activemq.version>5.8.0.redhat-60065</activemq.version> -->
 <br><br>
 
 Consumer Options
@@ -82,7 +80,7 @@ topic|	false|	Whether to receive from a topic or queue.
 durable	| false	 | Whether or not this is a durable topic subscriber. Only valid if topic is set to true.
 maxMessages	|0 (no limit) |	The maximum number of messages to receive after which the consumer terminates. If maxMessages is > 0, it defines a *batch*
 batchCount	|1 | If maxMessages is > 0, batchCount governs the number of consumer objects used to read the batches. For example, if maxMessages is 10 and batchCount is 5, then a consumer object is terminated after it reads 10 messages and a new one is created to take its place; this cycling will occur 5 times and thus the client will only read a total of 50 messages. If set to 0, the cycling will occur indefinitely. persistent|	false |	Whether to send persistent or non-persistent (transient) reply messages back to the producer.receiveTimeOut|	0 (no time limit)|	Stop receiving messages and terminate if a message does not arrive within the specified number of milliseconds. 
-transacted	|false|	Whether to receive messages within a local JMS transaction. transactedBatchSize	 |1 |	The number of messages to batch in a transaction. Only used if transacted is set to true.rollback|	false|	When set to true, the consumer rolls back the trx instead of committing it. sampleSize	|10000 |	The number of messages at which a sampling is taken and the results of which are displayed.  sleepTime |	0|	The number of milliseconds to sleep in between each message that is consumed. You can use this to mimic a slow consumer. Sleep occurs before message acknowledge or commit.subject	|TOOL.DEFAULT |	The name of the target destination (topic or queue).durable|false| Used for creating a durable subscriber. The 'topic' option must be specifiedurl	|failover://tcp://localhost:61616	|The url that is used for connecting with the ActiveMQ message broker.user |	joef |	The user name that is used for establishing a connection with ActiveMQ.
+transacted	|false|	Whether to receive messages within a local JMS transaction. transactedBatchSize	 |1 |	The number of messages to batch in a transaction. Only used if transacted is set to true.rollback|	false|	When set to true, the consumer rolls back the trx instead of committing it. sampleSize	|10000 |	The number of messages at which a sampling is taken and the results of which are displayed.  sleepTime |	0|	The number of milliseconds to sleep in between each message that is consumed. You can use this to mimic a slow consumer. Sleep occurs before message acknowledge or commit.subject	|TOOL.DEFAULT |	The name of the target destination (topic or queue).durable|false| Used for creating a durable subscriber. The 'topic' option must be specifiedurl	|failover://tcp://localhost:61616	|The url that is used for connecting to the ActiveMQ message broker.user |	joef |	The user name that is used for establishing a connection with ActiveMQ.
 password |	admin |	The password that is used for establishing a connection with ActiveMQ.verbose |	false	| When set to true, each message that is consumed will be written out to the console. threadCount | 1 | The number of consumer threads to spawn. When more than one thread, only the first will log messages. 
 sharedConnection | false | When set to false, all consumer threads will create their own separate connection. When set to true all consumer threads will share one common connection, from which they all create their sessions. 
 help | false | use only for displaying all consumer options (e.g., runc help) 
@@ -95,11 +93,12 @@ Producer Options
 :------    | :------   | :-----------
 messageCount	|10000|	The number of messages to produce.
 messageSize |255 |	The size of the message that is produced.  persistent|	false |	Whether to send persistent or non-persistent messages.
-priority|not set | The JMS priority to assign to the messagessampleSize |	10000|	The number of messages at which a sampling is taken and the results of which are displayed.  sleepTime |	0 |	The number of milliseconds to sleep in between each message produced.subject |	TOOL.DEFAULT |	The name of the target destination (topic or queue)timeToLive |	0 (does not expire)	|The message expiration time in milliseconds. topic |	false|	Whether to send to a topic or queue.transacted|	false|	Whether to send messages within a local JMS transactionreply | false | Whether to implement request-reply pattern. **NB: Ignored if (transacted == 'true' and (transactedBatchSize > 1 or rollback == 'true'))** transactedBatchSize |	1	| The number of messages to batch in a transaction. Only used if transacted is set to true.url	|failover://tcp://localhost:61616	|The url that is used for connecting with the ActiveMQ message broker.user	|joef|	The user name that is used for establishing a connection with ActiveMQ.
+priority|not set | The JMS priority to assign to the messagessampleSize |	10000|	The number of messages at which a sampling is taken and the results of which are displayed.  sleepTime |	0 |	The number of milliseconds to sleep in between each message produced.subject |	TOOL.DEFAULT |	The name of the target destination (topic or queue)timeToLive |	0 (does not expire)	|The message expiration time in milliseconds. topic |	false (queue)|	Whether to send to a topic or queue.transacted|	false|	Whether to send messages within a local JMS transactiontransactedBatchSize |	1	| The number of messages to batch in a transaction. Only used if transacted is set to true.rollback|	false|	When set to true, the producer rolls back the trx instead of committing it. 
+reply | false | Whether to implement request-reply pattern. **NB: Ignored if (transacted == 'true' and (transactedBatchSize > 1 or rollback == 'true'))** url	|failover://tcp://localhost:61616	|The url that is used for connecting to the ActiveMQ message broker.user	|joef|	The user name that is used for establishing a connection with ActiveMQ.
 password |	admin |	The password that is used for establishing a connection with ActiveMQ.verbose|false|	When set to true, each message that is produced is written out to the console.
 threadCount | 1 | The number of consumer threads to spawn. 
 group | null | The group name to assign to the JMSXGROUPID header
-header|null|A custom header (property) to be assigned to each message produced. The supplied value must be in the form of "key:value". For example, header=foo:bar, where 'foo' is header key (name) and 'bar' is its value.  
+header|null|A custom header (property) to be assigned to each message produced. The supplied value must be in the form of "key:value". For example, header=foo:bar, where 'foo' is header key (name) and 'bar' is its value. If there us a space character in the header value, then use '%20'. For example header=fullName:Mary%20Smith
 help | false | use only for displaying all producer options (e.g., runp help) 
 
 
