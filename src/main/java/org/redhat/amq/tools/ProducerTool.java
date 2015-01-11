@@ -434,7 +434,7 @@ public class ProducerTool {
 
 	/**
 	 * @param header
-	 *            the header to set
+	 *            the header and its value to set
 	 */
 	public void setHeader(String header) throws IllegalArgumentException {
 
@@ -455,7 +455,7 @@ public class ProducerTool {
 					+ tokens[1]);
 		}
 		this.header = tokens[0].trim();
-		this.headerValue = tokens[1].trim();
+		this.headerValue = tokens[1].trim().replaceAll("%20", " ");
 	}
 
 	/**
