@@ -32,8 +32,8 @@ import javax.jms.Topic;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
 
-public class ConsumerThread implements Runnable, MessageListener,
-		ExceptionListener {
+public class ConsumerThread extends Thread implements Runnable,
+		MessageListener, ExceptionListener {
 
 	private ConsumerTool ct;
 	private MessageProducer replyProducer;
@@ -47,6 +47,8 @@ public class ConsumerThread implements Runnable, MessageListener,
 	private Session session;
 	private boolean running;
 	private Random randomizer;
+	private boolean listener;
+	private MessageConsumer consumer;
 
 	public ConsumerThread(ConsumerTool ct, int threadID, Connection connection) {
 		this.ct = ct;
@@ -57,7 +59,6 @@ public class ConsumerThread implements Runnable, MessageListener,
 	public void run() {
 
 		running = true;
-		boolean listener = false;
 
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			public void run() {
@@ -125,13 +126,14 @@ public class ConsumerThread implements Runnable, MessageListener,
 				do {
 					consumeMessagesAndClose(connection, session,
 							createConsumer());
-				} while (--batchCounter != 0);
+				} while (--batchCounter != 0 && isRunning());
+				log("closing");
 				closeThings(session, connection);
 			} else if (getReceiveTimeOut() == 0) {
 				// receive indefinitely
-				MessageConsumer consumer = createConsumer();
-				consumer.setMessageListener(this);
 				listener = true;
+				consumer = createConsumer();
+				consumer.setMessageListener(this);
 			} else {
 				// consume indefinitely, as long as messages
 				// continue to arrive within the specified
@@ -244,8 +246,21 @@ public class ConsumerThread implements Runnable, MessageListener,
 	}
 
 	public synchronized void onException(JMSException ex) {
-		System.out.println("JMS Exception occured.  Shutting down client.");
+		System.out.println(getThreadID()
+				+ ":JMS Exception occured.  Shutting down consumer thread.");
+		if (getThreadID() == 1) {
+			ex.printStackTrace();
+		}
 		running = false;
+		if (listener) {
+			if (getConsumer() != null) {
+				try {
+					getConsumer().close();
+				} catch (Exception ignore) {
+				}
+			}
+			getLatch().countDown();
+		}
 	}
 
 	synchronized boolean isRunning() {
@@ -306,8 +321,9 @@ public class ConsumerThread implements Runnable, MessageListener,
 				onMessage(message);
 			}
 		}
-		// log(getThreadID() + ":read max number of messages ["
-		// + getMaxMessages() + "], closing consumer");
+		// log(getThreadID() + ":read max number of messages [" +
+		// getMaxMessages()
+		// + "], closing consumer");
 		consumer.close();
 		if (isDurable() && isTopic() && isUnsubscribe()) {
 			session.unsubscribe(getConsumerName() + getThreadID());
@@ -333,7 +349,7 @@ public class ConsumerThread implements Runnable, MessageListener,
 		// + timeout + " ms");
 
 		Message message = null;
-		while ((message = consumer.receive(timeout)) != null && isRunning()) {
+		while (isRunning() && (message = consumer.receive(timeout)) != null) {
 			onMessage(message);
 		}
 		System.out.println(getThreadID()
@@ -450,6 +466,21 @@ public class ConsumerThread implements Runnable, MessageListener,
 			randomizer = new Random();
 		}
 		return randomizer;
+	}
+
+	/**
+	 * @return the consumer
+	 */
+	public MessageConsumer getConsumer() {
+		return consumer;
+	}
+
+	/**
+	 * @param consumer
+	 *            the consumer to set
+	 */
+	public void setConsumer(MessageConsumer consumer) {
+		this.consumer = consumer;
 	}
 
 }

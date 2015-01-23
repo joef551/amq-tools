@@ -19,11 +19,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
 import javax.jms.ExceptionListener;
 import javax.jms.Connection;
+import javax.jms.ConnectionFactory;
 import javax.jms.JMSException;
 import javax.jms.Session;
 
 import org.apache.activemq.ActiveMQConnection;
 import org.apache.activemq.ActiveMQConnectionFactory;
+import org.apache.activemq.pool.PooledConnectionFactory;
 
 /**
  * A simple AMQ client for consuming messages. Capable of spawning multiple
@@ -42,6 +44,9 @@ public class ConsumerTool implements ExceptionListener {
 	private int ackMode = Session.AUTO_ACKNOWLEDGE;
 	private int threadCount = 1;
 	private int batchCount = 1;
+	private int maxConnections = 2;
+	private int idleTimeout;
+	private int expiryTimeout;
 	private boolean transacted;
 	private boolean durable;
 	private boolean unsubscribe = true;
@@ -53,12 +58,16 @@ public class ConsumerTool implements ExceptionListener {
 	private boolean verbose;
 	private boolean topic;
 	private boolean batchRandom;
+	private boolean pooled;
 	private long sleepTime;
 	private long receiveTimeOut;
 	private long milliStart;
 	private long maxMessages;
 	private long sampleSize = 5000L;
 	private ActiveMQConnectionFactory connectionFactory;
+	private PooledConnectionFactory pooledConnectionFactory;
+	private ConnectionFactory jmsConnectionFactory;
+
 	private Connection connection;
 	private ExecutorService threadPool;
 	private CountDownLatch latch;
@@ -84,6 +93,10 @@ public class ConsumerTool implements ExceptionListener {
 			+ "[persistent]                              default: false \n" 
 			+ "[rollback]                                default: false \n" 
 			+ "[shareConnection]                         default: false \n" 
+			+ "[pooled]                                  default: false \n" 
+			+ "[maxConnections]                          default: 2 \n" 
+			+ "[idleTimeout]                             default: 0 \n" 
+			+ "[expiryTimeout]                           default: 0 \n" 
 			+ "[topic]]                                  default: false\n";			
 	// @formatter:on
 
@@ -137,6 +150,10 @@ public class ConsumerTool implements ExceptionListener {
 		System.out.println("shareConnection  = " + shareConnection);
 		System.out.println("batchCount       = " + batchCount);
 		System.out.println("batchRandom      = " + batchRandom);
+		System.out.println("pooled           = " + pooled);
+		System.out.println("maxConnections   = " + maxConnections);
+		System.out.println("idleTimeout      = " + idleTimeout);
+		System.out.println("expiryTimeout    = " + expiryTimeout);
 
 		// don't bother with this if we're in transacted mode
 		if (!isTransacted()) {
@@ -155,13 +172,29 @@ public class ConsumerTool implements ExceptionListener {
 			System.out.println("ackMode          =  SESSION_TRANSACTED");
 		}
 
-		// Create the connection factory used by the consumer threads
-		connectionFactory = new ActiveMQConnectionFactory(user, password, url);
+		setConnectionFactory(new ActiveMQConnectionFactory(user, password, url));
 
+		// Create the connection factory used by the consumer threads. Note that
+		// it doesn't make sense to use a pooled connection factory if the
+		// connection is shared
+		if (!isShareConnection() && isPooled()) {
+			setPooledConnectionFactory(new PooledConnectionFactory(
+					connectionFactory));
+			getPooledConnectionFactory().setMaxConnections(getMaxConnections());
+			getPooledConnectionFactory().setExpiryTimeout(getExpiryTimeout());
+			getPooledConnectionFactory().setIdleTimeout(getIdleTimeout());
+			setJmsConnectionFactory(getPooledConnectionFactory());
+		} else {
+			setJmsConnectionFactory(getConnectionFactory());
+		}
+
+		// if the connection is not to be shared amongst the worker threads,
+		// then 'connection' will be null and the worker thread will create one
+		// for itself.
 		if (isShareConnection()) {
-			connection = connectionFactory.createConnection();
+			connection = getJmsConnectionFactory().createConnection();
 			connection.setExceptionListener(this);
-			System.out.println("Starting connection...");
+			System.out.println("Starting shared connection...");
 			connection.start();
 			System.out.println("Shared connection started.");
 		}
@@ -178,12 +211,14 @@ public class ConsumerTool implements ExceptionListener {
 		// wait for the cosumers to finish
 		latch.await();
 		// shutdown the pool
-		threadPool.shutdown();
+		threadPool.shutdownNow();
 
 		if (isShareConnection()) {
 			connection.close();
 		}
 		System.out.println("Run completed");
+		// Force an exit!
+		System.exit(0);
 	}
 
 	public void setAckMode(String ackMode) {
@@ -215,10 +250,6 @@ public class ConsumerTool implements ExceptionListener {
 
 	public boolean isPersistent() {
 		return persistent;
-	}
-
-	public ActiveMQConnectionFactory getConnectionFactory() {
-		return connectionFactory;
 	}
 
 	public int getAckMode() {
@@ -521,6 +552,109 @@ public class ConsumerTool implements ExceptionListener {
 	 */
 	public void setBatchRandom(boolean batchRandom) {
 		this.batchRandom = batchRandom;
+	}
+
+	/**
+	 * @return the pooled
+	 */
+	public boolean isPooled() {
+		return pooled;
+	}
+
+	/**
+	 * @param pooled
+	 *            the pooled to set
+	 */
+	public void setPooled(boolean pooled) {
+		this.pooled = pooled;
+	}
+
+	/**
+	 * @return the pooledConnectionFactory
+	 */
+	public PooledConnectionFactory getPooledConnectionFactory() {
+		return pooledConnectionFactory;
+	}
+
+	/**
+	 * @param pooledConnectionFactory
+	 *            the pooledConnectionFactory to set
+	 */
+	public void setPooledConnectionFactory(
+			PooledConnectionFactory pooledConnectionFactory) {
+		this.pooledConnectionFactory = pooledConnectionFactory;
+	}
+
+	public ActiveMQConnectionFactory getConnectionFactory() {
+		return connectionFactory;
+	}
+
+	/**
+	 * @param pooledConnectionFactory
+	 *            the pooledConnectionFactory to set
+	 */
+	public void setConnectionFactory(ActiveMQConnectionFactory connectionFactory) {
+		this.connectionFactory = connectionFactory;
+	}
+
+	/**
+	 * @return the jmsConnectionFactory
+	 */
+	public ConnectionFactory getJmsConnectionFactory() {
+		return jmsConnectionFactory;
+	}
+
+	/**
+	 * @param jmsConnectionFactory
+	 *            the jmsConnectionFactory to set
+	 */
+	public void setJmsConnectionFactory(ConnectionFactory jmsConnectionFactory) {
+		this.jmsConnectionFactory = jmsConnectionFactory;
+	}
+
+	/**
+	 * @return the maxConnections
+	 */
+	public int getMaxConnections() {
+		return maxConnections;
+	}
+
+	/**
+	 * @param maxConnections
+	 *            the maxConnections to set
+	 */
+	public void setMaxConnections(int maxConnections) {
+		this.maxConnections = maxConnections;
+	}
+
+	/**
+	 * @return the idleTimeout
+	 */
+	public int getIdleTimeout() {
+		return idleTimeout;
+	}
+
+	/**
+	 * @param idleTimeout
+	 *            the idleTimeout to set
+	 */
+	public void setIdleTimeout(int idleTimeout) {
+		this.idleTimeout = idleTimeout;
+	}
+
+	/**
+	 * @return the expiryTimeout
+	 */
+	public int getExpiryTimeout() {
+		return expiryTimeout;
+	}
+
+	/**
+	 * @param expiryTimeout
+	 *            the expiryTimeout to set
+	 */
+	public void setExpiryTimeout(int expiryTimeout) {
+		this.expiryTimeout = expiryTimeout;
 	}
 
 }
