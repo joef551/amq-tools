@@ -41,6 +41,7 @@ public class ConsumerThread extends Thread implements Runnable,
 	private int threadID;
 	private Connection connection;
 	private int countLast;
+	private int countConsumed;
 	private int transactedBatchCount;
 	private long msgCount;
 	private long milliStart;
@@ -62,10 +63,9 @@ public class ConsumerThread extends Thread implements Runnable,
 
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			public void run() {
-				System.out
-						.println(getThreadID()
-								+ ":Shutting down - total messages read = "
-								+ countLast);
+				System.out.println(getThreadID()
+						+ ":Shutting down: total messages received = " + countLast
+						+ ", total messages consumed = " + countConsumed);
 			}
 		});
 
@@ -168,10 +168,17 @@ public class ConsumerThread extends Thread implements Runnable,
 				}
 			}
 
-			// Increment the total message count
+			// Increment the total message count. The count keeps track of the
+			// total number of messages consumed; regardless of whether they've
+			// subsequently rolled back as part of a trx.
 			++countLast;
 
+			// keeps track of only those messages that are consumed and not
+			// rolled back
+			++countConsumed;
+
 			// if instructed to do so, sleep in between reads
+			// TODO: give this a random option
 			if (getSleepTime() > 0) {
 				try {
 					Thread.sleep(getSleepTime());
@@ -185,15 +192,15 @@ public class ConsumerThread extends Thread implements Runnable,
 				// then either rollback or commit the trx
 				if (++transactedBatchCount == getTransactedBatchSize()) {
 					// simulate a rollback if we're not supposed to
-					// commit the transaction
-					transactedBatchCount = 0;
+					// commit the transaction					
 					if (isRollback()) {
 						// System.out.println("rolling back trx, no rollback");
+						countConsumed -= transactedBatchCount;
 						session.rollback();
 					} else {
-						// System.out.println("committing trx");
 						session.commit();
 					}
+					transactedBatchCount = 0;
 				}
 			}
 			// ack the message if we're in the client ack mode

@@ -17,14 +17,17 @@ import java.util.Date;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
+
 import javax.jms.Connection;
 import javax.jms.DeliveryMode;
 import javax.jms.Destination;
+import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageConsumer;
 import javax.jms.MessageProducer;
 import javax.jms.Session;
 import javax.jms.TextMessage;
+import javax.jms.ExceptionListener;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
 
@@ -32,7 +35,7 @@ import org.apache.activemq.ActiveMQConnectionFactory;
  * Worker thread launched by the ProducerTool
  * 
  */
-public class ProducerThread implements Runnable {
+public class ProducerThread implements Runnable, ExceptionListener {
 
 	private static final String JMSXGROUPID = "JMSXGroupID";
 	private static final String JMSXGROUPSEQ = "JMSXGroupSeq";
@@ -50,6 +53,7 @@ public class ProducerThread implements Runnable {
 	private Destination tempDest;
 	private MessageConsumer consumer;
 	private String batchGroup;
+	private boolean running;
 
 	public ProducerThread(ProducerTool pt, int threadID) {
 		this.pt = pt;
@@ -57,6 +61,8 @@ public class ProducerThread implements Runnable {
 	}
 
 	public void run() {
+
+		running = true;
 
 		System.out.println("Producer " + getThreadID() + " has started");
 
@@ -118,7 +124,7 @@ public class ProducerThread implements Runnable {
 				if (--batchCounter > 0 && getBatchSleep() > 0) {
 					Thread.sleep(getBatchSleep());
 				}
-			} while (batchCounter > 0);
+			} while (batchCounter > 0 && running);
 
 		} catch (Exception e) {
 			System.out.println("Caught: " + e);
@@ -166,7 +172,7 @@ public class ProducerThread implements Runnable {
 		}
 
 		// send messageCount number of messages
-		for (msgsSent = 1; msgsSent <= getMessageCount(); msgsSent++, totalMsgsSent++) {
+		for (msgsSent = 1; msgsSent <= getMessageCount() && running; msgsSent++, totalMsgsSent++) {
 
 			TextMessage message = session
 					.createTextMessage(createMessageText(totalMsgsSent));
@@ -213,7 +219,7 @@ public class ProducerThread implements Runnable {
 
 			// if request-reply has been requested, then wait
 			// for consumer's reply
-			if (isReply()) {
+			if (running && isReply()) {
 				Message receivedMessage = consumer.receive(5000);
 				if (receivedMessage == null) {
 					throw new Exception(
@@ -223,7 +229,7 @@ public class ProducerThread implements Runnable {
 
 			// display metrics only if trx was not rolled back, this is thread
 			// #1, and sample size has been reached
-			if (!rolledBack && getThreadID() == 1
+			if (running && !rolledBack && getThreadID() == 1
 					&& msgsSent % getSampleSize() == 0) {
 
 				// get the current time
@@ -256,6 +262,15 @@ public class ProducerThread implements Runnable {
 			}
 
 			rolledBack = false;
+		}
+	}
+
+	public synchronized void onException(JMSException ex) {
+		running = false;
+		System.out.println(getThreadID()
+				+ ":JMS Exception occured.  Shutting down consumer thread.");
+		if (getThreadID() == 1) {
+			ex.printStackTrace();
 		}
 	}
 

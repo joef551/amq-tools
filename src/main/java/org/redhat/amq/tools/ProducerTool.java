@@ -26,7 +26,7 @@ import org.apache.activemq.ActiveMQConnectionFactory;
 public class ProducerTool {
 
 	private ActiveMQConnectionFactory connectionFactory;
-	private String user = "joef";
+	private String user = "admin";
 	private String password = "admin";
 	private String url = ActiveMQConnection.DEFAULT_BROKER_URL;
 	private String subject = "TOOL.DEFAULT";
@@ -41,6 +41,7 @@ public class ProducerTool {
 	private boolean reply;
 	private boolean rollback;
 	private boolean help;
+	private boolean syncSend;
 	private long messageCount = 5000L;
 	private long sampleSize = 5000L;
 	private long sleepTime;
@@ -73,6 +74,7 @@ public class ProducerTool {
 		+ "[batchSleep=<sleep time between batch>]    default: " + batchSleep + "\n"
 		+ "[threadCount=<# of producer threads]       default: 1\n" 
 		+ "[transactedBatchSize=<trx batch size>]     default: 1\n"		
+		+ "[syncSend]                                 default: false\n" 
 		+ "[transacted]                               default: false\n" 
 		+ "[durable]                                  default: false\n" 
 		+ "[persistent]                               default: false \n" 
@@ -124,12 +126,14 @@ public class ProducerTool {
 			System.out.println("password             = " + password);
 			System.out.println("subject              = " + subject);
 			System.out.println("message              = " + getMessage());
-			System.out.println("topic                = " + topic);			
+			System.out.println("topic                = " + topic);	
+			System.out.println("syncSend             = " + syncSend);
 			System.out.println("group                = " + group);
 			System.out.println("header               = " + header);
 			System.out.println("headerValue          = " + headerValue);
 			System.out.println("persistent           = " + persistent);
 			System.out.println("transacted           = " + transacted);
+			System.out.println("transactedBatchSize  = " + transactedBatchSize);
 			System.out.println("rollback             = " + rollback);			
 			System.out.println("sampleSize           = " + sampleSize);		
 			System.out.println("messageCount         = " + messageCount);	
@@ -141,17 +145,22 @@ public class ProducerTool {
 			System.out.println("timeToLive           = " + timeToLive);
 			System.out.println("priority             = " + priority);
 			System.out.println("reply                = " + reply);
-			System.out.println("transactedBatchSize  = " + transactedBatchSize);
+			
 			// @formatter:on
 
 			// Create the ActiveMQ connection factory.
 			connectionFactory = new ActiveMQConnectionFactory(user, password,
 					url);
 
-			// latch used to wait for consumer threads to complete
+			if (isTopic() && isSyncSend()) {
+				System.out.println("setting sync send for topic");
+				connectionFactory.setAlwaysSyncSend(true);			
+			}
+
+			// latch used to wait for producer threads to complete
 			setLatch(new CountDownLatch(getThreadCount()));
 
-			// create the thread pool and start the consumer threads
+			// create the thread pool and start the producer threads
 			setThreadPool(Executors.newFixedThreadPool(getThreadCount()));
 			for (int i = 1; i <= getThreadCount(); i++) {
 				getThreadPool().execute(new ProducerThread(this, i));
@@ -430,6 +439,14 @@ public class ProducerTool {
 	 */
 	public String getHeader() {
 		return header;
+	}
+
+	public void setSyncSend(boolean syncSend) {
+		this.syncSend = syncSend;
+	}
+
+	public boolean isSyncSend() {
+		return syncSend;
 	}
 
 	/**

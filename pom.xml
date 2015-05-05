@@ -11,7 +11,8 @@
 		<spring.version>4.0.5.RELEASE</spring.version>
 		<slf4j.version>1.7.7</slf4j.version>
 		<!-- <activemq.version>5.9.0.redhat-610379</activemq.version> -->		
-		<activemq.version>5.8.0.redhat-60024</activemq.version> 
+		<activemq.version>5.9.0.redhat-611423</activemq.version> 
+		<!-- <activemq.version>5.8.0.redhat-60024</activemq.version> -->
 		<!-- <activemq.version>5.8.0.redhat-60065</activemq.version> -->
 	</properties>
 

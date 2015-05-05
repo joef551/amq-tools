@@ -1,4 +1,7 @@
 #!/bin/bash
 
+# Maven
 #mvn exec:java -Dexec.mainClass="org.redhat.amq.tools.ProducerTool" -Dexec.args="$*"   
+
+# Pure Java using uber jar
 java -cp ./target/uber-amq-tools.jar org.redhat.amq.tools.ProducerTool $*

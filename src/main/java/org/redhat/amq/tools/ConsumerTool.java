@@ -34,7 +34,7 @@ import org.apache.activemq.pool.PooledConnectionFactory;
  */
 public class ConsumerTool implements ExceptionListener {
 	private String subject = "TOOL.DEFAULT";
-	private String user = "joef";
+	private String user = "admin";
 	private String password = "admin";
 	private String url = ActiveMQConnection.DEFAULT_BROKER_URL;
 	private String consumerName = "Fred";
@@ -84,6 +84,7 @@ public class ConsumerTool implements ExceptionListener {
 			+ "[sleepTime=<sleep time between each rcv>] default: 0\n" 
 			+ "[maxMessages=<max msgs to rcv>]           default: infinite \n" 
 			+ "[transactedBatchSize=<trx batch size>]    default: 1\n" 
+			+ "[batchCount=<batch count>]                default: 1\n" 
 			+ "[threadCount=<# of consumer threads]      default: 1\n" 
 			+ "[sampleSize=<# of msgs to sample>]        default: 10000\n" 
 			+ "[ackMode=<ack mode for receives>]         default: AUTO_ACKNOWLEDGE\n" 			
@@ -132,28 +133,31 @@ public class ConsumerTool implements ExceptionListener {
 				+ subject);
 		System.out.println("Using a " + (durable ? "durable" : "non-durable")
 				+ " subscription");
-		System.out.println("sleepTime        = " + sleepTime);
-		System.out.println("consumerName     = " + consumerName);
-		System.out.println("clientId         = " + clientId);
-		System.out.println("user             = " + user);
-		System.out.println("password         = " + password);
-		System.out.println("maxMessages      = " + maxMessages);
-		System.out.println("threadCount      = " + threadCount);
-		System.out.println("receiveTimeOut   = " + receiveTimeOut);
-		System.out.println("persistent       = " + persistent);
-		System.out.println("transacted       = " + transacted);
-		System.out.println("rollback         = " + rollback);
-		System.out.println("unsubscribe      = " + unsubscribe);
-		System.out.println("ackMode          = " + ackMode);
-		System.out.println("sampleSize       = " + sampleSize);
-		System.out.println("selector         = " + selector);
-		System.out.println("shareConnection  = " + shareConnection);
-		System.out.println("batchCount       = " + batchCount);
-		System.out.println("batchRandom      = " + batchRandom);
-		System.out.println("pooled           = " + pooled);
-		System.out.println("maxConnections   = " + maxConnections);
-		System.out.println("idleTimeout      = " + idleTimeout);
-		System.out.println("expiryTimeout    = " + expiryTimeout);
+		System.out.println("sleepTime           = " + sleepTime);
+		System.out.println("consumerName        = " + consumerName);
+		System.out.println("clientId            = " + clientId);
+		System.out.println("user                = " + user);
+		System.out.println("password            = " + password);
+		System.out.println("maxMessages         = " + maxMessages);
+		System.out.println("threadCount         = " + threadCount);
+		System.out.println("receiveTimeOut      = " + receiveTimeOut);
+		System.out.println("persistent          = " + persistent);
+		System.out.println("transacted          = " + transacted);
+		System.out.println("transactedBatchSize = " + transactedBatchSize);
+		System.out.println("rollback            = " + rollback);
+		System.out.println("unsubscribe         = " + unsubscribe);
+		System.out.println("ackMode             = " + ackMode);
+		System.out.println("sampleSize          = " + sampleSize);
+		System.out.println("selector            = " + selector);
+		System.out.println("shareConnection     = " + shareConnection);
+		System.out.println("batchCount          = " + batchCount);
+		System.out.println("batchRandom         = " + batchRandom);
+		System.out.println("pooled              = " + pooled);
+		System.out.println("maxConnections      = " + maxConnections);
+		System.out.println("idleTimeout         = " + idleTimeout);
+		System.out.println("expiryTimeout       = " + expiryTimeout);
+		
+		
 
 		// don't bother with this if we're in transacted mode
 		if (!isTransacted()) {
