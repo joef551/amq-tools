@@ -47,9 +47,9 @@ public class ConsumerThread extends Thread implements Runnable,
 	private long milliStart;
 	private Session session;
 	private boolean running;
-	private Random randomizer;
 	private boolean listener;
 	private MessageConsumer consumer;
+	private long msgReceiveTime;
 
 	public ConsumerThread(ConsumerTool ct, int threadID, Connection connection) {
 		this.ct = ct;
@@ -64,8 +64,9 @@ public class ConsumerThread extends Thread implements Runnable,
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			public void run() {
 				System.out.println(getThreadID()
-						+ ":Shutting down: total messages received = " + countLast
-						+ ", total messages consumed = " + countConsumed);
+						+ ":Shutting down: total messages received = "
+						+ countLast + ", total messages consumed = "
+						+ countConsumed);
 			}
 		});
 
@@ -129,7 +130,7 @@ public class ConsumerThread extends Thread implements Runnable,
 				} while (--batchCounter != 0 && isRunning());
 				log("closing");
 				closeThings(session, connection);
-			} else if (getReceiveTimeOut() == 0) {
+			} else if (getReceiveTimeout() == 0) {
 				// receive indefinitely
 				listener = true;
 				consumer = createConsumer();
@@ -139,7 +140,8 @@ public class ConsumerThread extends Thread implements Runnable,
 				// continue to arrive within the specified
 				// timeout period
 				consumeMessagesAndClose(connection, session, createConsumer(),
-						getMaxMessages());
+						getReceiveTimeout());
+				log("closing");
 				closeThings(session, connection);
 			}
 		} catch (Exception e) {
@@ -154,6 +156,14 @@ public class ConsumerThread extends Thread implements Runnable,
 
 	public void onMessage(Message message) {
 		try {
+
+			long lastRcvTime = getMsgReceiveTime();
+			setMsgReceiveTime(System.currentTimeMillis());
+
+			if ((getMsgReceiveTime() - lastRcvTime) > 10000L) {
+				log("Resetting sample");
+				msgCount = 0;
+			}
 
 			if (isVerbose()) {
 				if (message instanceof TextMessage) {
@@ -177,8 +187,9 @@ public class ConsumerThread extends Thread implements Runnable,
 			// rolled back
 			++countConsumed;
 
-			// if instructed to do so, sleep in between reads
-			// TODO: give this a random option
+			// if instructed to do so, sleep in between reads and before
+			// messages is acked or committed. this sort of simulates work that
+			// has to be done prior to the ack or commit
 			if (getSleepTime() > 0) {
 				try {
 					Thread.sleep(getSleepTime());
@@ -192,9 +203,8 @@ public class ConsumerThread extends Thread implements Runnable,
 				// then either rollback or commit the trx
 				if (++transactedBatchCount == getTransactedBatchSize()) {
 					// simulate a rollback if we're not supposed to
-					// commit the transaction					
+					// commit the transaction
 					if (isRollback()) {
-						// System.out.println("rolling back trx, no rollback");
 						countConsumed -= transactedBatchCount;
 						session.rollback();
 					} else {
@@ -223,24 +233,24 @@ public class ConsumerThread extends Thread implements Runnable,
 								+ message.getJMSMessageID()));
 			}
 
-			// Start the clock if this is the first message in the sample
-			// interval
-			if (msgCount == 0) {
+			// Increment the message count and start the clock if this is the
+			// first message in the sample interval
+			if (msgCount++ == 0) {
 				milliStart = System.currentTimeMillis();
 			}
 
-			if (++msgCount == getSampleSize()) {
+			// if we've reached the sample size, then dump the stats
+			if (msgCount == getSampleSize()) {
+				msgCount = 0;
 				long currentTime = System.currentTimeMillis();
 				double intervalTime = currentTime - milliStart;
 				if (intervalTime > 0L) {
 					double intervalRate = (double) getSampleSize()
 							/ (intervalTime / 1000.00);
 					System.out.println("[" + getThreadID() + "]"
-							+ " Interval time = " + intervalTime
-							+ "\tTotal msg count = " + countLast
-							+ "\tMgs per second = " + intervalRate);
+							+ " Interval time (ms) = " + intervalTime  
+							+ "\tRate (mgs/sec) = " + intervalRate);
 				}
-				msgCount = 0;
 			}
 
 		} catch (JMSException e) {
@@ -313,13 +323,8 @@ public class ConsumerThread extends Thread implements Runnable,
 			Session session, MessageConsumer consumer) throws JMSException,
 			IOException {
 
-		// log("We are about to wait until we consume: " + getMaxMessages()
-		// + " message(s), then we will shutdown");
 		// if requested to do so, randomize the batch count a little
 		long msgCount = getMaxMessages();
-		if (isBatchRandom()) {
-			msgCount += getRandomizer().nextInt(11);
-		}
 
 		for (long i = 0; i < msgCount && isRunning();) {
 			Message message = consumer.receive(1000);
@@ -328,14 +333,12 @@ public class ConsumerThread extends Thread implements Runnable,
 				onMessage(message);
 			}
 		}
-		// log(getThreadID() + ":read max number of messages [" +
-		// getMaxMessages()
-		// + "], closing consumer");
+		// close out the conumer after we're done reading in a batch of messages
 		consumer.close();
+		// unsubscribe if it is a durable topic consumer
 		if (isDurable() && isTopic() && isUnsubscribe()) {
 			session.unsubscribe(getConsumerName() + getThreadID());
 		}
-
 	}
 
 	/**
@@ -352,27 +355,27 @@ public class ConsumerThread extends Thread implements Runnable,
 			Session session, MessageConsumer consumer, long timeout)
 			throws JMSException, IOException {
 
-		// log("Consuming as long as messages continue to arrive within: "
-		// + timeout + " ms");
-
 		Message message = null;
 		while (isRunning() && (message = consumer.receive(timeout)) != null) {
 			onMessage(message);
 		}
-		System.out.println(getThreadID()
-				+ ":Message has not arrived within specified time, "
+		log("Message has not arrived within specified time, "
 				+ "shutting down.");
 		consumer.close();
 		if (isDurable() && isTopic() && isUnsubscribe()) {
 			session.unsubscribe(getConsumerName());
 		}
-		// session.close();
-		// connection.close();
 	}
 
+	// by default, only prints log messages from first thread
 	private void log(String str) {
-		if (getThreadID() == 1) {
-			System.out.println(str);
+		String s1 = getThreadID() + ":" + str;
+		if (!isVerbose()) {
+			if (getThreadID() == 1) {
+				System.out.println(s1);
+			}
+		} else {
+			System.out.println(s1);
 		}
 	}
 
@@ -436,8 +439,8 @@ public class ConsumerThread extends Thread implements Runnable,
 		return ct.getMaxMessages();
 	}
 
-	private long getReceiveTimeOut() {
-		return ct.getReceiveTimeOut();
+	private long getReceiveTimeout() {
+		return ct.getReceiveTimeout();
 	}
 
 	private long getSleepTime() {
@@ -459,20 +462,13 @@ public class ConsumerThread extends Thread implements Runnable,
 	private int getBatchCount() {
 		return ct.getBatchCount();
 	}
+	
+	private long getSampleResetTime() {
+		return ct.getSampleResetTime();
+	}
 
 	private boolean isShareConnection() {
 		return ct.isShareConnection();
-	}
-
-	private boolean isBatchRandom() {
-		return ct.isBatchRandom();
-	}
-
-	private Random getRandomizer() {
-		if (randomizer == null) {
-			randomizer = new Random();
-		}
-		return randomizer;
 	}
 
 	/**
@@ -488,6 +484,21 @@ public class ConsumerThread extends Thread implements Runnable,
 	 */
 	public void setConsumer(MessageConsumer consumer) {
 		this.consumer = consumer;
+	}
+
+	/**
+	 * @return the msgReceiveTime
+	 */
+	public long getMsgReceiveTime() {
+		return msgReceiveTime;
+	}
+
+	/**
+	 * @param msgReceiveTime
+	 *            the msgReceiveTime to set
+	 */
+	public void setMsgReceiveTime(long msgReceiveTime) {
+		this.msgReceiveTime = msgReceiveTime;
 	}
 
 }

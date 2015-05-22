@@ -57,10 +57,10 @@ public class ConsumerTool implements ExceptionListener {
 	private boolean pauseBeforeShutdown;
 	private boolean verbose;
 	private boolean topic;
-	private boolean batchRandom;
 	private boolean pooled;
 	private long sleepTime;
-	private long receiveTimeOut;
+	private long receiveTimeout;
+	private long sampleResetTime = 10000L;
 	private long milliStart;
 	private long maxMessages;
 	private long sampleSize = 5000L;
@@ -97,7 +97,9 @@ public class ConsumerTool implements ExceptionListener {
 			+ "[pooled]                                  default: false \n" 
 			+ "[maxConnections]                          default: 2 \n" 
 			+ "[idleTimeout]                             default: 0 \n" 
+			+ "[receiveTimeout]                          default: 0 \n" 
 			+ "[expiryTimeout]                           default: 0 \n" 
+			+ "[sampleResetTime]                         default: 10000 \n" 
 			+ "[topic]]                                  default: false\n";			
 	// @formatter:on
 
@@ -140,7 +142,6 @@ public class ConsumerTool implements ExceptionListener {
 		System.out.println("password            = " + password);
 		System.out.println("maxMessages         = " + maxMessages);
 		System.out.println("threadCount         = " + threadCount);
-		System.out.println("receiveTimeOut      = " + receiveTimeOut);
 		System.out.println("persistent          = " + persistent);
 		System.out.println("transacted          = " + transacted);
 		System.out.println("transactedBatchSize = " + transactedBatchSize);
@@ -151,13 +152,12 @@ public class ConsumerTool implements ExceptionListener {
 		System.out.println("selector            = " + selector);
 		System.out.println("shareConnection     = " + shareConnection);
 		System.out.println("batchCount          = " + batchCount);
-		System.out.println("batchRandom         = " + batchRandom);
 		System.out.println("pooled              = " + pooled);
 		System.out.println("maxConnections      = " + maxConnections);
 		System.out.println("idleTimeout         = " + idleTimeout);
+		System.out.println("receiveTimeout      = " + receiveTimeout);
 		System.out.println("expiryTimeout       = " + expiryTimeout);
-		
-		
+		System.out.println("sampleResetTime     = " + sampleResetTime);
 
 		// don't bother with this if we're in transacted mode
 		if (!isTransacted()) {
@@ -332,12 +332,12 @@ public class ConsumerTool implements ExceptionListener {
 		this.persistent = persistent;
 	}
 
-	public void setReceiveTimeOut(long receiveTimeOut) {
-		this.receiveTimeOut = receiveTimeOut;
+	public void setReceiveTimeout(long receiveTimeout) {
+		this.receiveTimeout = receiveTimeout;
 	}
 
-	public long getReceiveTimeOut() {
-		return receiveTimeOut;
+	public long getReceiveTimeout() {
+		return receiveTimeout;
 	}
 
 	public void setSleepTime(long sleepTime) {
@@ -544,21 +544,6 @@ public class ConsumerTool implements ExceptionListener {
 	}
 
 	/**
-	 * @return the batchRandom
-	 */
-	public boolean isBatchRandom() {
-		return batchRandom;
-	}
-
-	/**
-	 * @param batchRandom
-	 *            the batchRandom to set
-	 */
-	public void setBatchRandom(boolean batchRandom) {
-		this.batchRandom = batchRandom;
-	}
-
-	/**
 	 * @return the pooled
 	 */
 	public boolean isPooled() {
@@ -659,6 +644,21 @@ public class ConsumerTool implements ExceptionListener {
 	 */
 	public void setExpiryTimeout(int expiryTimeout) {
 		this.expiryTimeout = expiryTimeout;
+	}
+
+	/**
+	 * @return the sampleTime
+	 */
+	public long getSampleResetTime() {
+		return sampleResetTime;
+	}
+
+	/**
+	 * @param sampleTime
+	 *            the sampleTime to set
+	 */
+	public void setSampleResetTime(long sampleResetTime) {
+		this.sampleResetTime = sampleResetTime;
 	}
 
 }
