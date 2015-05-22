@@ -3,7 +3,7 @@
 Simple Producer and Consumer Tool for ActiveMQ
 ======
 
-The idea behind this project is to provide an ActiveMQ client tool that can be used to simulate a variety of different client use cases. 
+The idea behind this project is to provide an ActiveMQ client tool that can be used to simulate a variety of different client (producer or consumer) use cases. 
 
 Run the following to build the project:
  
@@ -26,6 +26,8 @@ Some examples:
 3. Connect producer to broker at default URI with user 'fred' and password 'admin' and write persistent messages to default queue name of 'TOOL.DEFAULT'.
 
 	$ runp user=fred password=admin persistent 
+	
+	Note that the default URL to connect to the broker is <i>failover://tcp://localhost:61616</i>.
 
 4. Same as above, but spawns 100 producer threads; each will create its own connection to the broker
 
@@ -60,6 +62,20 @@ Some examples:
 
 	$ runc user=admin password=admin url=http://10.0.1.3:62000?jms.prefetchPolicy.queuePrefetch=1
 
+
+The consumer will dump sampling statistics, such as the ones below, each time it reaches the sampleSize (default = 5000).
+
+```
+[1] Interval time (ms) = 785.0	Rate (mgs/sec) = 6369.426751592357
+[1] Interval time (ms) = 535.0	Rate (mgs/sec) = 9345.794392523363
+[1] Interval time (ms) = 532.0	Rate (mgs/sec) = 9398.496240601504
+[1] Interval time (ms) = 337.0	Rate (mgs/sec) = 14836.795252225518
+[1] Interval time (ms) = 306.0	Rate (mgs/sec) = 16339.869281045752
+[1] Interval time (ms) = 312.0	Rate (mgs/sec) = 16025.641025641025
+[1] Interval time (ms) = 260.0	Rate (mgs/sec) = 19230.76923076923
+```
+If the consumer does not receive a message within the sampleResetTime (default = 10000 ms), it resets the statistics. 
+
 ActiveMQ Version
 ----
 Note in the project's pom.xml that the version of the ActiveMQ client libraries being used is currently set at  `5.9.0.redhat-610379`. You will need to adjust it (i.e., comment and uncomment the lines below) according to the target ActiveMQ broker. 
@@ -81,8 +97,9 @@ selector | not used | Used for specifying a selector. For example, to specify th
 topic|	false|	Whether to receive from a topic or queue.
 durable	| false	 | Whether or not this is a durable topic subscriber. Only valid if topic is set to true.
 maxMessages	|0 (no limit) |	The maximum number of messages to receive after which the consumer terminates. If maxMessages is > 0, it defines a *batch*
-batchCount	|1 | If maxMessages is > 0, batchCount governs the number of consumer objects used to read the batches. For example, if maxMessages is 10 and batchCount is 5, then a consumer object is terminated after it reads 10 messages and a new one is created to take its place; this cycling will occur 5 times and thus the client will only read a total of 50 messages. If set to 0, the cycling will occur indefinitely. persistent|	false |	Whether to send persistent or non-persistent (transient) reply messages back to the producer.receiveTimeOut|	0 (no time limit)|	Stop receiving messages and terminate if a message does not arrive within the specified number of milliseconds. 
-transacted	|false|	Whether to receive messages within a local JMS transaction. transactedBatchSize	 |1 |	The number of messages to batch in a transaction. Only used if transacted is set to true.rollback|	false|	When set to true, the consumer rolls back the trx instead of committing it. sampleSize	|5000 |	The number of messages at which a sampling is taken and the results of which are displayed.  sleepTime |	0|	The number of milliseconds to sleep in between each message that is consumed. You can use this to mimic a slow consumer. Sleep occurs before message acknowledge or commit.subject	|TOOL.DEFAULT |	The name of the target destination (topic or queue).durable|false| Used for creating a durable subscriber. The 'topic' option must be specifiedurl	|failover://tcp://localhost:61616	|The url that is used for connecting to the ActiveMQ message broker. You can assign it all the options described [here](http://activemq.apache.org/connection-configuration-uri.html)user |	joef |	The user name that is used for establishing a connection with ActiveMQ.
+batchCount	|1 | If maxMessages is > 0, batchCount governs the number of consumer objects used to read the batches. For example, if maxMessages is 10 and batchCount is 5, then a consumer object is terminated after it reads 10 messages and a new one is created to take its place; this cycling will occur 5 times and thus the client will only read a total of 50 messages. If set to 0, the cycling will occur indefinitely. persistent|	false |	Whether to send persistent or non-persistent (transient) reply messages back to the producer.receiveTimeout|	0 (no time limit)|	Stop receiving messages and terminate if a message does not arrive within the specified number of milliseconds. 
+transacted	|false|	Whether to receive messages within a local JMS transaction. transactedBatchSize	 |1 |	The number of messages to batch in a transaction. Only used if transacted is set to true.rollback|	false|	When set to true, the consumer rolls back the trx instead of committing it. sampleSize	|5000 |	The number of messages at which a sampling is taken and the results of which are displayed. 
+sampleResetTime	|10000 |	If a message is not received within this time (ms), the sampling statistics are reset.   sleepTime |	0|	The number of milliseconds to sleep in between each message that is consumed. You can use this to mimic a slow consumer. Sleep occurs before message acknowledge or commit.subject	|TOOL.DEFAULT |	The name of the target destination (topic or queue).durable|false| Used for creating a durable subscriber. The 'topic' option must be specifiedurl	|failover://tcp://localhost:61616	|The url that is used for connecting to the ActiveMQ message broker. You can assign it all the options described [here](http://activemq.apache.org/connection-configuration-uri.html)user |	admin |	The user name that is used for establishing a connection with ActiveMQ.
 password |	admin |	The password that is used for establishing a connection with ActiveMQ.verbose |	false	| When set to true, each message that is consumed will be written out to the console. threadCount | 1 | The number of consumer threads to spawn. When more than one thread, only the first will log messages. 
 sharedConnection | false | When set to false, all consumer threads will create their own separate connection. When set to true all consumer threads will share one common connection, from which they all create their sessions and consumer objects. 
 pooled|false|Whether to use a pooled connection factory. Only valid when sharedConnection is false. If the pooled connection factory is used, then these three options apply: 1) maxConnections, 2) idleTimeout, and 3) expiryTimeout.  For details on these three options click [here](http://activemq.apache.org/maven/apidocs/org/apache/activemq/pool/PooledConnectionFactory.html)
