@@ -15,7 +15,6 @@ package org.redhat.amq.tools;
 
 import java.util.Arrays;
 import java.util.Enumeration;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
 
@@ -32,8 +31,7 @@ import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.pool.PooledConnectionFactory;
 
 /**
- * A simple AMQ client for consuming messages. Capable of spawning multiple
- * client consumer threads.
+ * A simple AMQ browser.
  * 
  */
 public class BrowserTool implements ExceptionListener {

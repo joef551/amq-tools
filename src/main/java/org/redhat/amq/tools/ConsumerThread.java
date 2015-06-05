@@ -14,10 +14,10 @@
 package org.redhat.amq.tools;
 
 import java.io.IOException;
-import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 
 import javax.jms.Connection;
+import javax.jms.ConnectionFactory;
 import javax.jms.DeliveryMode;
 import javax.jms.Destination;
 import javax.jms.ExceptionListener;
@@ -75,7 +75,7 @@ public class ConsumerThread extends Thread implements Runnable,
 
 			if (connection == null) {
 				log("Creating connection...");
-				connection = getConnectionFactory().createConnection();
+				connection = getJmsConnectionFactory().createConnection();
 				if (connection == null) {
 					System.out.println(getThreadID()
 							+ ": Error, unable to acquire connection");
@@ -160,7 +160,7 @@ public class ConsumerThread extends Thread implements Runnable,
 			long lastRcvTime = getMsgReceiveTime();
 			setMsgReceiveTime(System.currentTimeMillis());
 
-			if ((getMsgReceiveTime() - lastRcvTime) > 10000L) {
+			if ((getMsgReceiveTime() - lastRcvTime) > getSampleResetTime()) {
 				log("Resetting sample");
 				msgCount = 0;
 			}
@@ -248,7 +248,7 @@ public class ConsumerThread extends Thread implements Runnable,
 					double intervalRate = (double) getSampleSize()
 							/ (intervalTime / 1000.00);
 					System.out.println("[" + getThreadID() + "]"
-							+ " Interval time (ms) = " + intervalTime  
+							+ " Interval time (ms) = " + intervalTime
 							+ "\tRate (mgs/sec) = " + intervalRate);
 				}
 			}
@@ -382,6 +382,10 @@ public class ConsumerThread extends Thread implements Runnable,
 	private ActiveMQConnectionFactory getConnectionFactory() {
 		return ct.getConnectionFactory();
 	}
+	
+	private ConnectionFactory getJmsConnectionFactory() {
+		return ct.getJmsConnectionFactory();
+	}
 
 	private CountDownLatch getLatch() {
 		return ct.getLatch();
@@ -462,7 +466,7 @@ public class ConsumerThread extends Thread implements Runnable,
 	private int getBatchCount() {
 		return ct.getBatchCount();
 	}
-	
+
 	private long getSampleResetTime() {
 		return ct.getSampleResetTime();
 	}

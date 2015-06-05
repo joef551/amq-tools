@@ -58,6 +58,8 @@ public class ConsumerTool implements ExceptionListener {
 	private boolean verbose;
 	private boolean topic;
 	private boolean pooled;
+	private boolean optimizeAcknowledge;
+	private boolean dispatchAsync;
 	private long sleepTime;
 	private long receiveTimeout;
 	private long sampleResetTime = 10000L;
@@ -94,7 +96,7 @@ public class ConsumerTool implements ExceptionListener {
 			+ "[persistent]                              default: false \n" 
 			+ "[rollback]                                default: false \n" 
 			+ "[shareConnection]                         default: false \n" 
-			+ "[pooled]                                  default: false \n" 
+			+ "[pooled]                                  default: false \n" 				
 			+ "[maxConnections]                          default: 2 \n" 
 			+ "[idleTimeout]                             default: 0 \n" 
 			+ "[receiveTimeout]                          default: 0 \n" 
@@ -152,7 +154,7 @@ public class ConsumerTool implements ExceptionListener {
 		System.out.println("selector            = " + selector);
 		System.out.println("shareConnection     = " + shareConnection);
 		System.out.println("batchCount          = " + batchCount);
-		System.out.println("pooled              = " + pooled);
+		System.out.println("pooled              = " + pooled);					
 		System.out.println("maxConnections      = " + maxConnections);
 		System.out.println("idleTimeout         = " + idleTimeout);
 		System.out.println("receiveTimeout      = " + receiveTimeout);
@@ -176,14 +178,14 @@ public class ConsumerTool implements ExceptionListener {
 			System.out.println("ackMode          =  SESSION_TRANSACTED");
 		}
 
-		setConnectionFactory(new ActiveMQConnectionFactory(user, password, url));
+		setConnectionFactory(new ActiveMQConnectionFactory(user, password, url));		
 
 		// Create the connection factory used by the consumer threads. Note that
 		// it doesn't make sense to use a pooled connection factory if the
 		// connection is shared
 		if (!isShareConnection() && isPooled()) {
 			setPooledConnectionFactory(new PooledConnectionFactory(
-					connectionFactory));
+					getConnectionFactory()));
 			getPooledConnectionFactory().setMaxConnections(getMaxConnections());
 			getPooledConnectionFactory().setExpiryTimeout(getExpiryTimeout());
 			getPooledConnectionFactory().setIdleTimeout(getIdleTimeout());
@@ -659,6 +661,34 @@ public class ConsumerTool implements ExceptionListener {
 	 */
 	public void setSampleResetTime(long sampleResetTime) {
 		this.sampleResetTime = sampleResetTime;
+	}
+
+	/**
+	 * @return the optimizeAcknowledge
+	 */
+	public boolean isOptimizeAcknowledge() {
+		return optimizeAcknowledge;
+	}
+
+	/**
+	 * @param optimizeAcknowledge the optimizeAcknowledge to set
+	 */
+	public void setOptimizeAcknowledge(boolean optimizeAcknowledge) {
+		this.optimizeAcknowledge = optimizeAcknowledge;
+	}
+
+	/**
+	 * @return the dispatchAsync
+	 */
+	public boolean isDispatchAsync() {
+		return dispatchAsync;
+	}
+
+	/**
+	 * @param dispatchAsync the dispatchAsync to set
+	 */
+	public void setDispatchAsync(boolean dispatchAsync) {
+		this.dispatchAsync = dispatchAsync;
 	}
 
 }
