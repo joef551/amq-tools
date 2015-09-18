@@ -16,8 +16,6 @@ package org.redhat.amq.tools;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.CountDownLatch;
-
 import javax.jms.ExceptionListener;
 import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
@@ -25,10 +23,9 @@ import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.Session;
 import javax.jms.QueueBrowser;
-
 import org.apache.activemq.ActiveMQConnection;
 import org.apache.activemq.ActiveMQConnectionFactory;
-import org.apache.activemq.pool.PooledConnectionFactory;
+import org.apache.activemq.ActiveMQPrefetchPolicy;
 
 /**
  * A simple AMQ browser.
@@ -43,24 +40,25 @@ public class BrowserTool implements ExceptionListener {
 	private String selector;
 	private Session session;
 	private boolean help;
-	private boolean verbose;
-	private boolean topic;
+	private boolean verbose = true;
 	private QueueBrowser browser;
 	private ActiveMQConnectionFactory connectionFactory;
-	private PooledConnectionFactory pooledConnectionFactory;
 	private ConnectionFactory jmsConnectionFactory;
+	private ActiveMQPrefetchPolicy prefetchPolicy = new ActiveMQPrefetchPolicy();
+	private int prefetch = 1;
 
 	private Connection connection;
 	private ExecutorService threadPool;
-	private CountDownLatch latch;
 
 	// @formatter:off
 	private static final String Usage = "\nusage: java ConsumerTool \n"
-			+ "[[user=<userid>]                          default: joef\n" 			
+			+ "[[user=<userid>]                          default: admin\n" 			
 			+ "[password=<password>]                     default: admin\n" 
 			+ "[consumerName=<consumer name>]            default: Fred\n" 
 			+ "[subject=<queue or topic name>]           default: TOOL.DEFAULT\n"  
-			+ "[selector=<header%20=%20%27value%27>]     default: null\n"  
+			+ "[selector=<header%20=%20%27value%27>]     default: null\n" 
+			+ "[prefetch=<prefetch count>]               default: 1\n" 
+			+ "[verbose]                                 default: true \n" 
 			+ "[url=<broker url>]                        default: " + ActiveMQConnection.DEFAULT_BROKER_URL + "\n";			
 	// @formatter:on
 
@@ -91,43 +89,51 @@ public class BrowserTool implements ExceptionListener {
 
 		// Display the current settings
 		System.out.println("A-MQ BrowserTool");
-		System.out.println("Connecting to URL: " + url);
-		System.out.println("Browsing queue: " + subject);
+		System.out.println("Connecting to URL   : " + url);
+		System.out.println("Browsing queue      : " + subject);
 		System.out.println("consumerName        = " + consumerName);
 		System.out.println("user                = " + user);
 		System.out.println("password            = " + password);
 		System.out.println("selector            = " + selector);
+		System.out.println("verbose             = " + verbose);
+		System.out.println("prefetch            = " + prefetch);
 
 		setConnectionFactory(new ActiveMQConnectionFactory(user, password, url));
+
+		// set the queue browser prefetch
+		getPrefetchPolicy().setQueueBrowserPrefetch(getPrefetch());
+		getConnectionFactory().setPrefetchPolicy(getPrefetchPolicy());
 
 		connection = getConnectionFactory().createConnection();
 		if (connection == null) {
 			System.out.println("Error, unable to acquire connection");
 			return;
 		}
+
 		connection.start();
 		System.out.println("Connection started.");
 
 		// grab a session from the connection
 		session = connection.createSession(false, Session.CLIENT_ACKNOWLEDGE);
 
-		// from the session, create a browser
-		browser = session.createBrowser(session.createQueue(getSubject()));
+		// from the session, create a browser with optional selector
+		browser = (getSelector() == null) ? session.createBrowser(session
+				.createQueue(getSubject())) : session.createBrowser(
+				session.createQueue(getSubject()), getSelector());
 
 		Enumeration msgs = browser.getEnumeration();
 		int msgCount = 0;
-		if (msgs.hasMoreElements()) {
+		if (msgs != null) {
 			while (msgs.hasMoreElements()) {
 				Message tempMsg = (Message) msgs.nextElement();
 				msgCount++;
 				if (isVerbose()) {
-					System.out.println("Message: " + tempMsg + "\n");
+					System.out.println("Message: " + tempMsg.toString() + "\n");
 				}
 			}
 		}
 
-		System.out.println("Messages returned = " + msgCount);
-
+		System.out.println("Number of messages returned = " + msgCount);
 		session.close();
 		connection.close();
 	}
@@ -137,14 +143,6 @@ public class BrowserTool implements ExceptionListener {
 		ex.printStackTrace();
 		threadPool.shutdown();
 		System.exit(1);
-	}
-
-	public CountDownLatch getLatch() {
-		return latch;
-	}
-
-	public void setLatch(CountDownLatch latch) {
-		this.latch = latch;
 	}
 
 	public void setConsumerName(String consumerName) {
@@ -169,22 +167,6 @@ public class BrowserTool implements ExceptionListener {
 
 	public String getSubject() {
 		return subject;
-	}
-
-	public void setTopic(boolean topic) {
-		this.topic = topic;
-	}
-
-	public boolean isTopic() {
-		return topic;
-	}
-
-	public void setQueue(boolean queue) {
-		this.topic = !queue;
-	}
-
-	public boolean getQueue(boolean queue) {
-		return topic;
 	}
 
 	public void setUrl(String url) {
@@ -257,22 +239,6 @@ public class BrowserTool implements ExceptionListener {
 		this.connection = connection;
 	}
 
-	/**
-	 * @return the pooledConnectionFactory
-	 */
-	public PooledConnectionFactory getPooledConnectionFactory() {
-		return pooledConnectionFactory;
-	}
-
-	/**
-	 * @param pooledConnectionFactory
-	 *            the pooledConnectionFactory to set
-	 */
-	public void setPooledConnectionFactory(
-			PooledConnectionFactory pooledConnectionFactory) {
-		this.pooledConnectionFactory = pooledConnectionFactory;
-	}
-
 	public ActiveMQConnectionFactory getConnectionFactory() {
 		return connectionFactory;
 	}
@@ -298,6 +264,38 @@ public class BrowserTool implements ExceptionListener {
 	 */
 	public void setJmsConnectionFactory(ConnectionFactory jmsConnectionFactory) {
 		this.jmsConnectionFactory = jmsConnectionFactory;
+	}
+
+	/**
+	 * @return the prefetchPolicy
+	 */
+	public ActiveMQPrefetchPolicy getPrefetchPolicy() {
+		return prefetchPolicy;
+	}
+
+	/**
+	 * @param prefetchPolicy
+	 *            the prefetchPolicy to set
+	 */
+	public void setPrefetchPolicy(ActiveMQPrefetchPolicy prefetchPolicy) {
+		this.prefetchPolicy = prefetchPolicy;
+	}
+
+	/**
+	 * @return the prefetch
+	 */
+	public int getPrefetch() {
+		return prefetch;
+	}
+
+	/**
+	 * @param prefetch
+	 *            the prefetch to set
+	 */
+	public void setPrefetch(int prefetch) {
+		if (prefetch >= 0) {
+			this.prefetch = prefetch;
+		}
 	}
 
 }
