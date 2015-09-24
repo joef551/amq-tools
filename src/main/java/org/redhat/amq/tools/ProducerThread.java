@@ -27,8 +27,6 @@ import javax.jms.Message;
 import javax.jms.MessageConsumer;
 import javax.jms.MessageProducer;
 import javax.jms.Session;
-import javax.jms.TextMessage;
-import javax.jms.ObjectMessage;
 import javax.jms.ExceptionListener;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
