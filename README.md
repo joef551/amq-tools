@@ -92,7 +92,7 @@ Consumer Options
  Option    | Default Value | Description 
 :------    | :------   | :-----------
 ackMode    | AUTO_ACKNOWLEDGE  | The acknowledgement mode to be used by the consumer. Other possible values are CLIENT_ACKNOWLEDGE and DUPS_OK_ACKNOWLEDGE. **Ignored if transacted (see below) is set to true.**
-consumerName | admin | The client identification string to use when establishing a durable topic subscriber. Only used if durable and topic are set to true. 
+consumerName | Fred | The client identification string to use when establishing a durable topic subscriber. Only used if durable and topic are set to true. 
 selector | not used | Used for specifying a selector. For example, to specify the selector foo='bar', enter selector=foo=%27foobar%27, and to specify foo = 'bar', enter foo%20=%20%27bar%27. Note that single quotes are required. 
 topic|	false|	Whether to receive from a topic or queue.
 durable	| false	 | Whether or not this is a durable topic subscriber. Only valid if topic is set to true.
