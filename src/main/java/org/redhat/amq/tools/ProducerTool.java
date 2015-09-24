@@ -55,6 +55,24 @@ public class ProducerTool {
 	private CountDownLatch latch;
 	private ExecutorService threadPool;
 
+	enum MessageType {
+		TEXT, OBJECT, BYTES;
+		public boolean isText() {
+			return this == TEXT;
+		}
+
+		public boolean isObject() {
+			return this == OBJECT;
+		}
+
+		public boolean isBytes() {
+			return this == BYTES;
+		}
+	}
+
+	// the default message type
+	private MessageType messageType = MessageType.TEXT;
+
 	// @formatter:off
 	private final String Usage = "\nusage: java ProducerTool \n"
 		+ "[[user=<userid>]                           default:" + user + "\n" 			
@@ -72,6 +90,7 @@ public class ProducerTool {
 		+ "[sampleSize=<# of msgs to sample>]         default: " + sampleSize + "\n"
 		+ "[batchCount=<# of msg batches to send]     default: " + batchCount + "\n"
 		+ "[batchSleep=<sleep time between batch>]    default: " + batchSleep + "\n"
+		+ "[messageType=<message type to send]        default: " + messageType + "\n"
 		+ "[threadCount=<# of producer threads]       default: 1\n" 
 		+ "[transactedBatchSize=<trx batch size>]     default: 1\n"		
 		+ "[syncSend]                                 default: false\n" 
@@ -145,7 +164,7 @@ public class ProducerTool {
 			System.out.println("timeToLive           = " + timeToLive);
 			System.out.println("priority             = " + priority);
 			System.out.println("reply                = " + reply);
-			
+			System.out.println("messageType          = " + messageType);			
 			// @formatter:on
 
 			// Create the ActiveMQ connection factory.
@@ -154,7 +173,7 @@ public class ProducerTool {
 
 			if (isTopic() && isSyncSend()) {
 				System.out.println("setting sync send for topic");
-				connectionFactory.setAlwaysSyncSend(true);			
+				connectionFactory.setAlwaysSyncSend(true);
 			}
 
 			// latch used to wait for producer threads to complete
@@ -488,6 +507,40 @@ public class ProducerTool {
 	 */
 	public void setHeaderValue(String headerValue) {
 		this.headerValue = headerValue;
+	}
+
+	/**
+	 * @return the objectMessage
+	 */
+	public boolean isObjectMessage() {
+		return messageType.isObject();
+	}
+
+	/**
+	 * @return the bytesMessage
+	 */
+	public boolean isBytesMessage() {
+		return messageType.isBytes();
+	}
+
+	/**
+	 * @return the messageType
+	 */
+	public MessageType getMessageType() {
+		return messageType;
+	}
+
+	/**
+	 * @param messageType
+	 *            the messageType to set
+	 */
+	public void setMessageType(String messageType)
+			throws IllegalArgumentException {
+		if (messageType == null || messageType.length() == 0) {
+			throw new IllegalArgumentException("messageType is null or empty");
+		}
+		this.messageType = MessageType
+				.valueOf(messageType.trim().toUpperCase());
 	}
 
 }

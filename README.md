@@ -112,7 +112,8 @@ Producer Options
  Option    | Default Value  | Description 
 :------    | :------   | :-----------
 messageCount	|5000|	The number of messages to produce.
-messageSize |256 |	The size of the message that is produced.  persistent|	false |	Whether to send persistent or non-persistent messages.
+messageSize |256 |	The size of the message that is produced. 
+messageType |text |	The JMS message type (TextMessage, BytesMessage, ObjectMessage) to produce.  Possible values are text, bytes, and object.persistent|	false |	Whether to send persistent or non-persistent messages.
 priority|not set | The JMS priority to assign to the messagessampleSize |	5000|	The number of messages at which a sampling is taken and the results of which are displayed.  sleepTime |	0 |	The number of milliseconds to sleep in between each message produced.subject |	TOOL.DEFAULT |	The name of the target destination (topic or queue)timeToLive |	0 (does not expire)	|The message expiration time in milliseconds. topic |	false (queue)|	Whether to send to a topic or queue.
 syncSend |	false |	If sending to topic, whether to issue sync, as opposed to async, sends transacted|	false|	Whether to send messages within the context of a local JMS transactiontransactedBatchSize |	1	| The number of messages to batch in a transaction. Only used if transacted is set to true.rollback|	false|	When set to true, the producer rolls back the trx instead of committing it. 
 reply | false | Whether to implement request-reply pattern. **NB: Ignored if (transacted == 'true' and (transactedBatchSize > 1 or rollback == 'true'))** url	|failover://tcp://localhost:61616	|The url that is used for connecting to the ActiveMQ message broker.user	|joef|	The user name that is used for establishing a connection with ActiveMQ.

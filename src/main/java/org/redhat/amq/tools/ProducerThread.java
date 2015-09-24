@@ -18,6 +18,7 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 
+import javax.jms.BytesMessage;
 import javax.jms.Connection;
 import javax.jms.DeliveryMode;
 import javax.jms.Destination;
@@ -27,6 +28,7 @@ import javax.jms.MessageConsumer;
 import javax.jms.MessageProducer;
 import javax.jms.Session;
 import javax.jms.TextMessage;
+import javax.jms.ObjectMessage;
 import javax.jms.ExceptionListener;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
@@ -116,7 +118,13 @@ public class ProducerThread implements Runnable, ExceptionListener {
 			}
 
 			// Start sending the messages
-			log("Producing ...");
+			if (isObjectMessage()) {
+				log("Producing object messages ...");
+			} else if (isBytesMessage()) {
+				log("Producing bytes messages ...");
+			} else {
+				log("Producing text messages ...");
+			}
 
 			int batchCounter = getBatchCount();
 			do {
@@ -173,9 +181,19 @@ public class ProducerThread implements Runnable, ExceptionListener {
 
 		// send messageCount number of messages
 		for (msgsSent = 1; msgsSent <= getMessageCount() && running; msgsSent++, totalMsgsSent++) {
+			
+			Message message = null;
+			String msgToSend = createMessageText(totalMsgsSent);
 
-			TextMessage message = session
-					.createTextMessage(createMessageText(totalMsgsSent));
+			if (isObjectMessage()) {
+				message = session.createObjectMessage(msgToSend);
+			} else if (isBytesMessage()) {
+				BytesMessage bmessage = session.createBytesMessage();
+				bmessage.writeBytes(msgToSend.getBytes());
+				message = bmessage;
+			} else {
+				message = session.createTextMessage(msgToSend);
+			}
 
 			if (getGroup() != null) {
 				message.setStringProperty(JMSXGROUPID, getBatchGroup());
@@ -190,8 +208,6 @@ public class ProducerThread implements Runnable, ExceptionListener {
 			if (getHeader() != null) {
 				message.setStringProperty(getHeader(), getHeaderValue());
 			}
-
-			// message.setStringProperty("fooheader", "foobar");
 
 			// if instructed to do so implement request-reply, but only if
 			// non-transacted mode
@@ -366,6 +382,14 @@ public class ProducerThread implements Runnable, ExceptionListener {
 
 	private boolean isTopic() {
 		return pt.isTopic();
+	}
+
+	private boolean isObjectMessage() {
+		return pt.isObjectMessage();
+	}
+
+	private boolean isBytesMessage() {
+		return pt.isBytesMessage();
 	}
 
 	private int getTransactedBatchSize() {
