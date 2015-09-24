@@ -322,10 +322,8 @@ public class ConsumerThread extends Thread implements Runnable,
 	protected void consumeMessagesAndClose(Connection connection,
 			Session session, MessageConsumer consumer) throws JMSException,
 			IOException {
-
-		// if requested to do so, randomize the batch count a little
+		
 		long msgCount = getMaxMessages();
-
 		for (long i = 0; i < msgCount && isRunning();) {
 			Message message = consumer.receive(1000);
 			if (message != null) {
