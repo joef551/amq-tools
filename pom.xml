@@ -10,9 +10,10 @@
 	<properties>
 		<spring.version>4.0.5.RELEASE</spring.version>
 		<slf4j.version>1.7.7</slf4j.version>
-		<!-- <activemq.version>5.9.0.redhat-610379</activemq.version> -->		
-		<activemq.version>5.9.0.redhat-611423</activemq.version> 
-		<!-- <activemq.version>5.8.0.redhat-60024</activemq.version> -->
+		<!-- <activemq.version>5.9.0.redhat-610379</activemq.version> -->
+		<!-- <activemq.version>5.9.0.redhat-611423</activemq.version> -->
+		<!-- <activemq.version>5.11.0.redhat-620133</activemq.version> -->
+		<activemq.version>5.8.0.redhat-60024</activemq.version>
 		<!-- <activemq.version>5.8.0.redhat-60065</activemq.version> -->
 	</properties>
 
@@ -20,12 +21,17 @@
 		<dependency>
 			<groupId>org.apache.activemq</groupId>
 			<artifactId>activemq-client</artifactId>
-			<version>${activemq.version}</version>			
+			<version>${activemq.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.activemq</groupId>
+			<artifactId>activemq-all</artifactId>
+			<version>${activemq.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.activemq</groupId>
 			<artifactId>activemq-pool</artifactId>
-			<version>${activemq.version}</version>			
+			<version>${activemq.version}</version>
 		</dependency>
 		<!-- Allows the client to connect via HTTP -->
 		<dependency>
@@ -42,7 +48,7 @@
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-log4j12</artifactId>
 			<version>1.7.7</version>
-		</dependency>			
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -71,6 +77,17 @@
 					</execution>
 				</executions>
 				<configuration>
+					<filters>
+						<filter>
+							<artifact>*:*</artifact>
+							<!--  exclude manifest signature files -->
+							<excludes>
+								<exclude>META-INF/*.SF</exclude>
+								<exclude>META-INF/*.DSA</exclude>
+								<exclude>META-INF/*.RSA</exclude>
+							</excludes>
+						</filter>
+					</filters>
 					<finalName>uber-amq-tools</finalName>
 				</configuration>
 			</plugin>
