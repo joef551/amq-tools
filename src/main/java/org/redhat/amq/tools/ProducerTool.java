@@ -91,14 +91,13 @@ public class ProducerTool {
 		+ "[batchCount=<# of msg batches to send]     default: " + batchCount + "\n"
 		+ "[batchSleep=<sleep time between batch>]    default: " + batchSleep + "\n"
 		+ "[messageType=<message type to send]        default: " + messageType + "\n"
-		+ "[threadCount=<# of producer threads]       default: 1\n" 
-		+ "[transactedBatchSize=<trx batch size>]     default: 1\n"		
-		+ "[syncSend]                                 default: false\n" 
-		+ "[transacted]                               default: false\n" 
-		+ "[durable]                                  default: false\n" 
-		+ "[persistent]                               default: false \n" 
-		+ "[reply]                                    default: false \n" 
-		+ "[topic]]                                   default: false\n";	
+		+ "[threadCount=<# of producer threads]       default: " + threadCount + "\n" 
+		+ "[transactedBatchSize=<trx batch size>]     default: " + transactedBatchSize + "\n"		
+		+ "[syncSend]                                 default: " + syncSend + "\n" 
+		+ "[transacted]                               default: " + transacted + "\n" 		
+		+ "[persistent]                               default: " + persistent + "\n" 
+		+ "[reply]                                    default: " + reply + "\n" 
+		+ "[topic]]                                   default: " + topic + "\n";	
 	// @formatter:on
 
 	public static void main(String[] args) {

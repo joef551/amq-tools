@@ -75,34 +75,34 @@ public class ConsumerTool implements ExceptionListener {
 	private CountDownLatch latch;
 
 	// @formatter:off
-	private static final String Usage = "\nusage: java ConsumerTool \n"
-			+ "[[user=<userid>]                          default: joef\n" 			
-			+ "[password=<password>]                     default: admin\n" 
-			+ "[consumerName=<consumer name>]            default: Fred\n" 
-			+ "[subject=<queue or topic name>]           default: TOOL.DEFAULT\n"  
+	private final String Usage = "\nusage: java ConsumerTool \n"
+			+ "[[user=<userid>]                          default: " + user + "\n" 			
+			+ "[password=<password>]                     default: " + password + "\n" 
+			+ "[consumerName=<consumer name>]            default: " + consumerName + "\n" 
+			+ "[subject=<queue or topic name>]           default: " + subject + "\n"  
 			+ "[selector=<header%20=%20%27value%27>]     default: null\n"  
 			+ "[url=<broker url>]                        default: " + ActiveMQConnection.DEFAULT_BROKER_URL + "\n" 
-			+ "[clientId=<client id>]                    default: Fred\n" 
-			+ "[sleepTime=<sleep time between each rcv>] default: 0\n" 
+			+ "[clientId=<client id>]                    default: " + clientId + "\n" 
+			+ "[sleepTime=<sleep time between each rcv>] default: " + sleepTime + "\n" 
 			+ "[maxMessages=<max msgs to rcv>]           default: infinite \n" 
-			+ "[transactedBatchSize=<trx batch size>]    default: 1\n" 
-			+ "[batchCount=<batch count>]                default: 1\n" 
-			+ "[threadCount=<# of consumer threads]      default: 1\n" 
-			+ "[sampleSize=<# of msgs to sample>]        default: 10000\n" 
+			+ "[transactedBatchSize=<trx batch size>]    default: " + transactedBatchSize + "\n" 
+			+ "[batchCount=<batch count>]                default: " + batchCount + "\n" 
+			+ "[threadCount=<# of consumer threads]      default: " + threadCount + "\n" 
+			+ "[sampleSize=<# of msgs to sample>]        default: " + sampleSize + "\n" 
 			+ "[ackMode=<ack mode for receives>]         default: AUTO_ACKNOWLEDGE\n" 			
-			+ "[transacted]                              default: false\n" 
-			+ "[durable]                                 default: false\n" 
-			+ "[unsubscribe]                             default: true \n" 
-			+ "[persistent]                              default: false \n" 
-			+ "[rollback]                                default: false \n" 
-			+ "[shareConnection]                         default: false \n" 
-			+ "[pooled]                                  default: false \n" 				
-			+ "[maxConnections]                          default: 2 \n" 
-			+ "[idleTimeout]                             default: 0 \n" 
-			+ "[receiveTimeout]                          default: 0 \n" 
-			+ "[expiryTimeout]                           default: 0 \n" 
-			+ "[sampleResetTime]                         default: 10000 \n" 
-			+ "[topic]]                                  default: false\n";			
+			+ "[transacted]                              default: " + transacted + "\n" 
+			+ "[durable]                                 default: " + durable + "\n" 
+			+ "[unsubscribe]                             default: " + unsubscribe + "\n" 
+			+ "[persistent]                              default: " + persistent + "\n" 
+			+ "[rollback]                                default: " + rollback + "\n" 
+			+ "[shareConnection]                         default: " + shareConnection + "\n" 
+			+ "[pooled]                                  default: " + pooled + "\n" 				
+			+ "[maxConnections]                          default: " + maxConnections + "\n" 
+			+ "[idleTimeout]                             default: " + idleTimeout + "\n" 
+			+ "[receiveTimeout]                          default: " + receiveTimeout + "\n" 
+			+ "[expiryTimeout]                           default: " + expiryTimeout + "\n" 
+			+ "[sampleResetTime]                         default: " + sampleResetTime + "\n" 
+			+ "[topic]]                                  default: " + topic + "\n";			
 	// @formatter:on
 
 	public static void main(String[] args) throws Exception {
@@ -120,7 +120,7 @@ public class ConsumerTool implements ExceptionListener {
 
 		// If 'help' request, then simply display usage string and exit
 		if (consumerTool.isHelp()) {
-			System.out.println(Usage);
+			System.out.println(consumerTool.Usage);
 			return;
 		}
 
@@ -154,7 +154,7 @@ public class ConsumerTool implements ExceptionListener {
 		System.out.println("selector            = " + selector);
 		System.out.println("shareConnection     = " + shareConnection);
 		System.out.println("batchCount          = " + batchCount);
-		System.out.println("pooled              = " + pooled);					
+		System.out.println("pooled              = " + pooled);
 		System.out.println("maxConnections      = " + maxConnections);
 		System.out.println("idleTimeout         = " + idleTimeout);
 		System.out.println("receiveTimeout      = " + receiveTimeout);
@@ -178,7 +178,7 @@ public class ConsumerTool implements ExceptionListener {
 			System.out.println("ackMode          =  SESSION_TRANSACTED");
 		}
 
-		setConnectionFactory(new ActiveMQConnectionFactory(user, password, url));		
+		setConnectionFactory(new ActiveMQConnectionFactory(user, password, url));
 
 		// Create the connection factory used by the consumer threads. Note that
 		// it doesn't make sense to use a pooled connection factory if the
@@ -671,7 +671,8 @@ public class ConsumerTool implements ExceptionListener {
 	}
 
 	/**
-	 * @param optimizeAcknowledge the optimizeAcknowledge to set
+	 * @param optimizeAcknowledge
+	 *            the optimizeAcknowledge to set
 	 */
 	public void setOptimizeAcknowledge(boolean optimizeAcknowledge) {
 		this.optimizeAcknowledge = optimizeAcknowledge;
@@ -685,7 +686,8 @@ public class ConsumerTool implements ExceptionListener {
 	}
 
 	/**
-	 * @param dispatchAsync the dispatchAsync to set
+	 * @param dispatchAsync
+	 *            the dispatchAsync to set
 	 */
 	public void setDispatchAsync(boolean dispatchAsync) {
 		this.dispatchAsync = dispatchAsync;
