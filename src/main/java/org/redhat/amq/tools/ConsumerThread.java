@@ -31,6 +31,7 @@ import javax.jms.TextMessage;
 import javax.jms.Topic;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
+import org.apache.activemq.ActiveMQSession;
 
 public class ConsumerThread extends Thread implements Runnable,
 		MessageListener, ExceptionListener {
@@ -214,7 +215,8 @@ public class ConsumerThread extends Thread implements Runnable,
 				}
 			}
 			// ack the message if we're in the client ack mode
-			else if (getAckMode() == Session.CLIENT_ACKNOWLEDGE) {
+			else if (getAckMode() == Session.CLIENT_ACKNOWLEDGE
+					|| getAckMode() == ActiveMQSession.INDIVIDUAL_ACKNOWLEDGE) {
 				// do not acknowledge if instructed to do so
 				if (!isRollback()) {
 					message.acknowledge();
@@ -322,7 +324,7 @@ public class ConsumerThread extends Thread implements Runnable,
 	protected void consumeMessagesAndClose(Connection connection,
 			Session session, MessageConsumer consumer) throws JMSException,
 			IOException {
-		
+
 		long msgCount = getMaxMessages();
 		for (long i = 0; i < msgCount && isRunning();) {
 			Message message = consumer.receive(1000);
@@ -380,7 +382,7 @@ public class ConsumerThread extends Thread implements Runnable,
 	private ActiveMQConnectionFactory getConnectionFactory() {
 		return ct.getConnectionFactory();
 	}
-	
+
 	private ConnectionFactory getJmsConnectionFactory() {
 		return ct.getJmsConnectionFactory();
 	}

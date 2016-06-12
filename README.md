@@ -80,10 +80,13 @@ ActiveMQ Version
 ----
 Note in the project's pom.xml that the version of the ActiveMQ client libraries being used is currently set at  `5.9.0.redhat-610379`. You will need to adjust it (i.e., comment and uncomment the lines below) according to the target ActiveMQ broker. 
 <br><br>
-
-	<activemq.version>5.9.0.redhat-610379</activemq.version>
+	
 	<!-- <activemq.version>5.8.0.redhat-60024</activemq.version> -->
 	<!-- <activemq.version>5.8.0.redhat-60065</activemq.version> -->
+	<activemq.version>5.9.0.redhat-610379</activemq.version>
+	<!-- <activemq.version>5.9.0.redhat-611423</activemq.version> -->
+	<!-- <activemq.version>5.11.0.redhat-621084</activemq.version> --> 
+	
 <br><br>
 
 Consumer Options
@@ -91,9 +94,9 @@ Consumer Options
 
  Option    | Default Value | Description 
 :------    | :------   | :-----------
-ackMode    | AUTO_ACKNOWLEDGE  | The acknowledgement mode to be used by the consumer. Other possible values are CLIENT_ACKNOWLEDGE and DUPS_OK_ACKNOWLEDGE. **Ignored if transacted (see below) is set to true.**
+ackMode    | AUTO_ACKNOWLEDGE  | The acknowledgement mode to be used by the consumer. Other possible values are CLIENT_ACKNOWLEDGE, INDIVIDUAL__ACKNOWLEDGE and DUPS_OK_ACKNOWLEDGE. **This setting is ignored if transacted (see below) is set to true.**
 consumerName | Fred | The client identification string to use when establishing a durable topic subscriber. Only used if durable and topic are set to true. 
-selector | not used | Used for specifying a selector. For example, to specify the selector foo='bar', enter selector=foo=%27foobar%27, and to specify foo = 'bar', enter foo%20=%20%27bar%27. Note that single quotes are required. 
+selector | not used | Used for specifying a selector. For example, to specify the selector foo='bar', enter selector=foo=%27bar%27, and to specify foo = 'bar', enter foo%20=%20%27bar%27. Note that single quotes are required. 
 topic|	false|	Whether to receive from a topic or queue.
 durable	| false	 | Whether or not this is a durable topic subscriber. Only valid if topic is set to true.
 maxMessages	|0 (no limit) |	The maximum number of messages to receive after which the consumer terminates. If maxMessages is > 0, it defines a *batch*
@@ -116,11 +119,11 @@ messageSize |256 |	The size of the message that is produced.
 messageType |text |	The JMS message type (TextMessage, BytesMessage, ObjectMessage) to produce.  Possible values are text, bytes, and object.persistent|	false |	Whether to send persistent or non-persistent messages.
 priority|not set | The JMS priority to assign to the messagessampleSize |	5000|	The number of messages at which a sampling is taken and the results of which are displayed.  sleepTime |	0 |	The number of milliseconds to sleep in between each message produced.subject |	TOOL.DEFAULT |	The name of the target destination (topic or queue)timeToLive |	0 (does not expire)	|The message expiration time in milliseconds. topic |	false (queue)|	Whether to send to a topic or queue.
 syncSend |	false |	If sending to topic, whether to issue sync, as opposed to async, sends transacted|	false|	Whether to send messages within the context of a local JMS transactiontransactedBatchSize |	1	| The number of messages to batch in a transaction. Only used if transacted is set to true.rollback|	false|	When set to true, the producer rolls back the trx instead of committing it. 
-reply | false | Whether to implement request-reply pattern. **NB: Ignored if (transacted == 'true' and (transactedBatchSize > 1 or rollback == 'true'))** url	|failover://tcp://localhost:61616	|The url that is used for connecting to the ActiveMQ message broker.user	|joef|	The user name that is used for establishing a connection with ActiveMQ.
+reply | false | Whether to implement request-reply pattern. **NB: Ignored if (transacted == 'true' and (transactedBatchSize > 1 or rollback == 'true'))** url	|failover://tcp://localhost:61616	|The url that is used for connecting to the ActiveMQ message broker.user	|admin|	The user name that is used for establishing a connection with ActiveMQ.
 password |	admin |	The password that is used for establishing a connection with ActiveMQ.verbose|false|	When set to true, each message that is produced is written out to the console.
 threadCount | 1 | The number of consumer threads to spawn. 
 group | null | The group name to assign to the JMSXGROUPID header
-header|null|A custom header (property) to be assigned to each message produced. The supplied value must be in the form of "key:value". For example, header=foo:bar, where 'foo' is header key (name) and 'bar' is its value. If there us a space character in the header value, then use '%20'. For example header=fullName:Mary%20Smith
+header|null|A custom header (property) to be assigned to each message produced. The supplied value must be in the form of "key:value". For example, header=foo:bar, where 'foo' is header key (name) and 'bar' is its value. If there is a space character in the header value, then use '%20'. For example header=fullName:Mary%20Smith
 help | false | use only for displaying all producer options (e.g., runp help) 
 
 

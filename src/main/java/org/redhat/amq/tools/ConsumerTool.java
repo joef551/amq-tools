@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
+
 import javax.jms.ExceptionListener;
 import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
@@ -25,6 +26,7 @@ import javax.jms.Session;
 
 import org.apache.activemq.ActiveMQConnection;
 import org.apache.activemq.ActiveMQConnectionFactory;
+import org.apache.activemq.ActiveMQSession;
 import org.apache.activemq.pool.PooledConnectionFactory;
 
 /**
@@ -173,6 +175,10 @@ public class ConsumerTool implements ExceptionListener {
 			case Session.DUPS_OK_ACKNOWLEDGE:
 				System.out.println("ackMode          =  DUPS_OK_ACKNOWLEDGE");
 				break;
+			case ActiveMQSession.INDIVIDUAL_ACKNOWLEDGE:
+				System.out
+						.println("ackMode          =  INDIVIDUAL_ACKNOWLEDGE");
+				break;
 			}
 		} else {
 			System.out.println("ackMode          =  SESSION_TRANSACTED");
@@ -231,18 +237,16 @@ public class ConsumerTool implements ExceptionListener {
 
 		if (ackMode == null || ackMode.isEmpty()) {
 			return;
-		}
-		if ("CLIENT_ACKNOWLEDGE".equalsIgnoreCase(ackMode)) {
+		} else if ("CLIENT_ACKNOWLEDGE".equalsIgnoreCase(ackMode)) {
 			this.ackMode = Session.CLIENT_ACKNOWLEDGE;
-		}
-		if ("AUTO_ACKNOWLEDGE".equalsIgnoreCase(ackMode)) {
+		} else if ("AUTO_ACKNOWLEDGE".equalsIgnoreCase(ackMode)) {
 			this.ackMode = Session.AUTO_ACKNOWLEDGE;
-		}
-		if ("DUPS_OK_ACKNOWLEDGE".equalsIgnoreCase(ackMode)) {
+		} else if ("DUPS_OK_ACKNOWLEDGE".equalsIgnoreCase(ackMode)) {
 			this.ackMode = Session.DUPS_OK_ACKNOWLEDGE;
-		}
-		if ("SESSION_TRANSACTED".equalsIgnoreCase(ackMode)) {
+		} else if ("SESSION_TRANSACTED".equalsIgnoreCase(ackMode)) {
 			this.ackMode = Session.SESSION_TRANSACTED;
+		} else if ("INDIVIDUAL_ACKNOWLEDGE".equalsIgnoreCase(ackMode)) {
+			this.ackMode = ActiveMQSession.INDIVIDUAL_ACKNOWLEDGE;
 		}
 	}
 
