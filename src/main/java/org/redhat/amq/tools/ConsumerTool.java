@@ -54,6 +54,7 @@ public class ConsumerTool implements ExceptionListener {
 	private boolean unsubscribe = true;
 	private boolean persistent;
 	private boolean shareConnection;
+	private boolean sharedDestination = true;
 	private boolean help;
 	private boolean rollback;
 	private boolean pauseBeforeShutdown;
@@ -98,7 +99,8 @@ public class ConsumerTool implements ExceptionListener {
 			+ "[persistent]                              default: " + persistent + "\n" 
 			+ "[rollback]                                default: " + rollback + "\n" 
 			+ "[shareConnection]                         default: " + shareConnection + "\n" 
-			+ "[pooled]                                  default: " + pooled + "\n" 				
+			+ "[pooled]                                  default: " + pooled + "\n" 
+			+ "[sharedDestination]                       default: " + sharedDestination + "\n" 
 			+ "[maxConnections]                          default: " + maxConnections + "\n" 
 			+ "[idleTimeout]                             default: " + idleTimeout + "\n" 
 			+ "[receiveTimeout]                          default: " + receiveTimeout + "\n" 
@@ -156,6 +158,7 @@ public class ConsumerTool implements ExceptionListener {
 		System.out.println("selector            = " + selector);
 		System.out.println("shareConnection     = " + shareConnection);
 		System.out.println("batchCount          = " + batchCount);
+		System.out.println("sharedDestination    = " + sharedDestination);
 		System.out.println("pooled              = " + pooled);
 		System.out.println("maxConnections      = " + maxConnections);
 		System.out.println("idleTimeout         = " + idleTimeout);
@@ -217,7 +220,18 @@ public class ConsumerTool implements ExceptionListener {
 		// create the thread pool and start the consumer threads
 		threadPool = Executors.newFixedThreadPool(getThreadCount());
 		for (int i = 1; i <= getThreadCount(); i++) {
-			threadPool.execute(new ConsumerThread(this, i, connection));
+			if (getThreadCount() == 1 || isSharedDestination()) {
+				threadPool.execute(new ConsumerThread(this, i, connection));
+			} else {
+				// create distinct destinations if there is more than one thread
+				// to invoke and we've been asked not to have all the threads
+				// share a destination; i.e., read from the same destination. in
+				// this case, each distinct destination's name is constructed as
+				// follows: "getSubject()<thread number>. For example,
+				// TOOL.DEFAULT0, TOOL.DEFAULT1, etc.
+				threadPool.execute(new ConsumerThread(this, i, connection,
+						getSubject() + Integer.toString(i)));
+			}
 		}
 
 		// wait for the cosumers to finish
@@ -695,6 +709,14 @@ public class ConsumerTool implements ExceptionListener {
 	 */
 	public void setDispatchAsync(boolean dispatchAsync) {
 		this.dispatchAsync = dispatchAsync;
+	}
+
+	public boolean isSharedDestination() {
+		return sharedDestination;
+	}
+
+	public void setSharedDestination(boolean sharedDestination) {
+		this.sharedDestination = sharedDestination;
 	}
 
 }

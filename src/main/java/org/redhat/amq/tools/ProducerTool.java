@@ -15,8 +15,10 @@ package org.redhat.amq.tools;
 
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
 import org.apache.activemq.ActiveMQConnection;
 import org.apache.activemq.ActiveMQConnectionFactory;
 
@@ -42,6 +44,7 @@ public class ProducerTool {
 	private boolean rollback;
 	private boolean help;
 	private boolean syncSend;
+	private boolean sharedDestination = true;;
 	private long messageCount = 5000L;
 	private long sampleSize = 5000L;
 	private long sleepTime;
@@ -70,6 +73,8 @@ public class ProducerTool {
 		}
 	}
 
+	private CyclicBarrier cyclicBarrier;
+
 	// the default message type
 	private MessageType messageType = MessageType.TEXT;
 
@@ -97,7 +102,9 @@ public class ProducerTool {
 		+ "[transacted]                               default: " + transacted + "\n" 		
 		+ "[persistent]                               default: " + persistent + "\n" 
 		+ "[reply]                                    default: " + reply + "\n" 
+	    + "[sharedDestination]                        default: " + sharedDestination + "\n" 
 		+ "[topic]]                                   default: " + topic + "\n";	
+	
 	// @formatter:on
 
 	public static void main(String[] args) {
@@ -163,7 +170,8 @@ public class ProducerTool {
 			System.out.println("timeToLive           = " + timeToLive);
 			System.out.println("priority             = " + priority);
 			System.out.println("reply                = " + reply);
-			System.out.println("messageType          = " + messageType);			
+			System.out.println("messageType          = " + messageType);	
+			System.out.println("sharedDestination     = " + sharedDestination);	
 			// @formatter:on
 
 			// Create the ActiveMQ connection factory.
@@ -178,10 +186,25 @@ public class ProducerTool {
 			// latch used to wait for producer threads to complete
 			setLatch(new CountDownLatch(getThreadCount()));
 
+			setCyclicBarrier(new CyclicBarrier(getThreadCount()));
+
 			// create the thread pool and start the producer threads
 			setThreadPool(Executors.newFixedThreadPool(getThreadCount()));
-			for (int i = 1; i <= getThreadCount(); i++) {
-				getThreadPool().execute(new ProducerThread(this, i));
+
+			// by default all threads write to the same destination (subject).
+			// You can override this by setting sharedDestination to false.
+			if (getThreadCount() == 1 || isSharedDestination()) {
+				for (int i = 1; i <= getThreadCount(); i++) {
+					getThreadPool().execute(
+							new ProducerThread(this, i, getCyclicBarrier()));
+				}
+			} else {
+				for (int i = 1; i <= getThreadCount(); i++) {
+					getThreadPool().execute(
+							new ProducerThread(this, i, getSubject()
+									+ Integer.toString(i), this
+									.getCyclicBarrier()));
+				}
 			}
 
 			// wait for the producer threads to finish
@@ -540,6 +563,36 @@ public class ProducerTool {
 		}
 		this.messageType = MessageType
 				.valueOf(messageType.trim().toUpperCase());
+	}
+
+	/**
+	 * @return the sharedDestination
+	 */
+	public boolean isSharedDestination() {
+		return sharedDestination;
+	}
+
+	/**
+	 * @param sharedDestination
+	 *            the sharedDestination to set
+	 */
+	public void setSharedDestination(boolean sharedDestination) {
+		this.sharedDestination = sharedDestination;
+	}
+
+	/**
+	 * @return the cyclicBarrier
+	 */
+	public CyclicBarrier getCyclicBarrier() {
+		return cyclicBarrier;
+	}
+
+	/**
+	 * @param cyclicBarrier
+	 *            the cyclicBarrier to set
+	 */
+	public void setCyclicBarrier(CyclicBarrier cyclicBarrier) {
+		this.cyclicBarrier = cyclicBarrier;
 	}
 
 }

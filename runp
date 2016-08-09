@@ -1,5 +1,10 @@
 #!/bin/bash
 
+#
+# Runs the Producer Tool
+#
+export CLASSPATH=.:$CLASSPATH
+
 # Maven
 #mvn exec:java -Dexec.mainClass="org.redhat.amq.tools.ProducerTool" -Dexec.args="$*"   
 

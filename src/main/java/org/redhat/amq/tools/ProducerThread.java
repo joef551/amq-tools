@@ -17,6 +17,7 @@ import java.util.Date;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
 
 import javax.jms.BytesMessage;
 import javax.jms.Connection;
@@ -54,15 +55,43 @@ public class ProducerThread implements Runnable, ExceptionListener {
 	private MessageConsumer consumer;
 	private String batchGroup;
 	private boolean running;
+	private String mySubject;
+	private CyclicBarrier cyclicBarrier;
 
-	public ProducerThread(ProducerTool pt, int threadID) {
+	public ProducerThread(ProducerTool pt, int threadID,
+			CyclicBarrier cyclicBarrier) {
 		this.pt = pt;
 		this.setThreadID(threadID);
+		this.cyclicBarrier = cyclicBarrier;
+	}
+
+	/**
+	 * This constructor is used when multiple producer threads are started and
+	 * they're all supposed to write to distinct subjects based on the one base
+	 * subject name. See ProducerTool for more details.
+	 * 
+	 * @param pt
+	 * @param threadID
+	 * @param subject
+	 */
+	public ProducerThread(ProducerTool pt, int threadID, String subject,
+			CyclicBarrier cyclicBarrier) {
+		this(pt, threadID, cyclicBarrier);
+		this.mySubject = subject;
 	}
 
 	public void run() {
 
-		running = true;
+		// wait til all threads are at the gate!
+		try {
+			getCyclicBarrier().await();
+			running = true;
+		} catch (Exception e) {
+			System.out.println("Caught: " + e);
+			e.printStackTrace();
+			getLatch().countDown();
+			return;
+		}
 
 		System.out.println("Producer " + getThreadID() + " has started");
 
@@ -179,7 +208,7 @@ public class ProducerThread implements Runnable, ExceptionListener {
 
 		// send messageCount number of messages
 		for (msgsSent = 1; msgsSent <= getMessageCount() && running; msgsSent++, totalMsgsSent++) {
-			
+
 			Message message = null;
 			String msgToSend = createMessageText(totalMsgsSent);
 
@@ -317,8 +346,10 @@ public class ProducerThread implements Runnable, ExceptionListener {
 
 	// simple little logger that only prints output from first thread
 	private void log(String str) {
-		if (getThreadID() == 1) {
-			System.out.println(str);
+		if (isVerbose()) {
+			System.out.println("[" + getThreadID() + "] " + str);
+		} else if (getThreadID() == 1) {
+			System.out.println("[" + getThreadID() + "] " + str);
 		}
 	}
 
@@ -363,7 +394,7 @@ public class ProducerThread implements Runnable, ExceptionListener {
 	}
 
 	private String getSubject() {
-		return pt.getSubject();
+		return (getMySubject() != null) ? getMySubject() : pt.getSubject();
 	}
 
 	private long getTimeToLive() {
@@ -392,6 +423,10 @@ public class ProducerThread implements Runnable, ExceptionListener {
 
 	private int getTransactedBatchSize() {
 		return pt.getTransactedBatchSize();
+	}
+
+	private boolean isVerbose() {
+		return pt.isVerbose();
 	}
 
 	private boolean isReply() {
@@ -536,6 +571,36 @@ public class ProducerThread implements Runnable, ExceptionListener {
 	 */
 	public void setTotalMsgsSent(long totalMsgsSent) {
 		this.totalMsgsSent = totalMsgsSent;
+	}
+
+	/**
+	 * @return the mySubject
+	 */
+	public String getMySubject() {
+		return mySubject;
+	}
+
+	/**
+	 * @param mySubject
+	 *            the mySubject to set
+	 */
+	public void setMySubject(String mySubject) {
+		this.mySubject = mySubject;
+	}
+
+	/**
+	 * @return the cyclicBarrier
+	 */
+	public CyclicBarrier getCyclicBarrier() {
+		return cyclicBarrier;
+	}
+
+	/**
+	 * @param cyclicBarrier
+	 *            the cyclicBarrier to set
+	 */
+	public void setCyclicBarrier(CyclicBarrier cyclicBarrier) {
+		this.cyclicBarrier = cyclicBarrier;
 	}
 
 }

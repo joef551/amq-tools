@@ -10,6 +10,10 @@ import javax.jms.ConnectionFactory;
 import javax.jms.Session;
 import org.apache.activemq.ActiveMQConnection;
 import org.apache.activemq.ActiveMQConnectionFactory;
+/**
+ * The ActiveMQ ProducerEventSource is an object that is be used to listen to the
+ * number of active producers available on a given destination.
+ */
 
 public class ProducerEventTool implements ProducerListener {
 
@@ -196,6 +200,12 @@ public class ProducerEventTool implements ProducerListener {
 		return producerEventSource;
 	}
 
+	/**
+	 * The ProducerEventSource is an object that is be used to listen to the
+	 * number of active producers available on a given destination.
+	 * 
+	 * @param producerEventSource
+	 */
 	public void setProducerEventSource(ProducerEventSource producerEventSource) {
 		this.producerEventSource = producerEventSource;
 	}

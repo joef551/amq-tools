@@ -1,9 +1,12 @@
 #!/bin/bash
 
+#
+# Runs the Browser Tool
+#
 export CLASSPATH=.:$CLASSPATH
 
 # Maven
-#mvn exec:java -Dexec.mainClass="org.redhat.amq.tools.ConsumerTool" -Dexec.args="$*"   
+#mvn exec:java -Dexec.mainClass="org.redhat.amq.tools.BrowserTool" -Dexec.args="$*"   
 
 # Pure Java using uber jar
 java -cp ./target/uber-amq-tools.jar org.redhat.amq.tools.BrowserTool $*

@@ -51,11 +51,18 @@ public class ConsumerThread extends Thread implements Runnable,
 	private boolean listener;
 	private MessageConsumer consumer;
 	private long msgReceiveTime;
+	private String mySubject;
 
 	public ConsumerThread(ConsumerTool ct, int threadID, Connection connection) {
 		this.ct = ct;
 		this.threadID = threadID;
 		this.connection = connection;
+	}
+
+	public ConsumerThread(ConsumerTool ct, int threadID, Connection connection,
+			String subject) {
+		this(ct, threadID, connection);
+		this.mySubject = subject;
 	}
 
 	public void run() {
@@ -451,8 +458,12 @@ public class ConsumerThread extends Thread implements Runnable,
 		return ct.getSleepTime();
 	}
 
+	private String getMySubject() {
+		return this.mySubject;
+	}
+
 	private String getSubject() {
-		return ct.getSubject();
+		return (getMySubject() != null) ? getMySubject() : ct.getSubject();
 	}
 
 	private String getSelector() {

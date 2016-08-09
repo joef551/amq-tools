@@ -1,5 +1,8 @@
 #!/bin/bash
 
+#
+# Runs the Consumer Tool
+#
 export CLASSPATH=.:$CLASSPATH
 
 # Maven
