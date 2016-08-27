@@ -61,6 +61,12 @@ Some examples:
 11.	Connect the consumer to the given URL and have it use a queue preFetch of 1. 
 
 	$ runc user=admin password=admin url=http://10.0.1.3:62000?jms.prefetchPolicy.queuePrefetch=1
+	
+
+12.	Run the consumer and have it read in all options/properties from the "myprops" file that is located in the /tmp directory. 
+
+	$ runc props=/tmp/myprops
+
 
 
 The consumer will dump sampling statistics, such as the ones below, each time it reaches the sampleSize (default = 5000).
@@ -96,7 +102,7 @@ Consumer Options
 :------    | :------   | :-----------
 ackMode    | AUTO_ACKNOWLEDGE  | The acknowledgement mode to be used by the consumer. Other possible values are CLIENT_ACKNOWLEDGE, INDIVIDUAL__ACKNOWLEDGE and DUPS_OK_ACKNOWLEDGE. **This setting is ignored if transacted (see below) is set to true.**
 consumerName | Fred | The client identification string to use when establishing a durable topic subscriber. Only used if durable and topic are set to true. 
-selector | not used | Used for specifying a selector. For example, to specify the selector foo='bar', enter selector=foo=%27bar%27, and to specify foo = 'bar', enter foo%20=%20%27bar%27. Note that single quotes are required. 
+selector | not used | Used for specifying a selector. For example, to specify the selector foo='bar', enter selector=foo=%27bar%27, and to specify foo = 'bar', enter foo%20=%20%27bar%27. Note that single quotes are required. If you specify this option in the properties/options file (see props option below), then these special encoded characters (i.e., %27) are not required. For example, you can simply use selector=foo='bar'
 topic|	false|	Whether to receive from a topic or queue.
 durable	| false	 | Whether or not this is a durable topic subscriber. Only valid if topic is set to true.
 maxMessages	|0 (no limit) |	The maximum number of messages to receive after which the consumer terminates. If maxMessages is > 0, it defines a *batch*
@@ -107,6 +113,7 @@ password |	admin |	The password that is used for establishing a connection with 
 sharedConnection | false | When set to false, all consumer threads will create their own separate connection. When set to true all consumer threads will share one common connection, from which they all create their sessions and consumer objects. 
 sharedDestination | true | When set to false, each consumer thread consumes from its own distinct destination. The name of the destination is created by concatenating the subject with its threadCount. For example, if you set threadCount to 2 and set this property to 'false', then 2 threads are invoked with thread one and two reading from TOOL.DEFAULT0 and TOOL.DEFAULT1, respectively. This property can be used to simulate creating 100s of destinations, but it will require a corresponding number of threads. 
 pooled|false|Whether to use a pooled connection factory. Only valid when sharedConnection is false. If the pooled connection factory is used, then these three options apply: 1) maxConnections, 2) idleTimeout, and 3) expiryTimeout.  For details on these three options click [here](http://activemq.apache.org/maven/apidocs/org/apache/activemq/pool/PooledConnectionFactory.html)
+props|null|Is used to specify a file that contains one or more options. For example, the file may contain the option 'url=tcp://myhost:61616'. Options found in this file override those options listed on the command line. 
 help | false | use only for displaying all consumer options (e.g., runc help) 
 
 Producer Options
@@ -126,6 +133,7 @@ threadCount | 1 | The number of producer threads to spawn.
 sharedDestination | true | When set to false, each producer thread produces to its own distinct destination. The name of the destination is created by concatenating the subject with its threadCount. For example, if you set threadCount to 2 and set this property to 'false', then 2 threads are invoked with thread one and two producing to TOOL.DEFAULT0 and TOOL.DEFAULT1, respectively.  
 group | null | The group name to assign to the JMSXGROUPID header
 header|null|A custom header (property) to be assigned to each message produced. The supplied value must be in the form of "key:value". For example, header=foo:bar, where 'foo' is header key (name) and 'bar' is its value. If there is a space character in the header value, then use '%20'. For example header=fullName:Mary%20Smith
+props|null|Is used to specify a file that contains one or more options. For example, the file may contain the option 'url=tcp://myhost:61616'. Options found in this file override those options listed on the command line. 
 help | false | use only for displaying all producer options (e.g., runp help) 
 
 

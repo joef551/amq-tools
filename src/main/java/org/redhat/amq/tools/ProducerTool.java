@@ -13,6 +13,10 @@
  */
 package org.redhat.amq.tools;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
@@ -21,6 +25,9 @@ import java.util.concurrent.Executors;
 
 import org.apache.activemq.ActiveMQConnection;
 import org.apache.activemq.ActiveMQConnectionFactory;
+
+import static org.redhat.amq.tools.CommandLineSupport.setOptions;
+import static org.redhat.amq.tools.CommandLineSupport.readProps;
 
 /**
  * A simple JMS producer tool for ActiveMQ
@@ -36,6 +43,7 @@ public class ProducerTool {
 	private String group;
 	private String header;
 	private String headerValue;
+	private String props;
 	private boolean topic;
 	private boolean transacted;
 	private boolean persistent;
@@ -99,6 +107,7 @@ public class ProducerTool {
 		+ "[threadCount=<# of producer threads]       default: " + threadCount + "\n" 
 		+ "[transactedBatchSize=<trx batch size>]     default: " + transactedBatchSize + "\n"		
 		+ "[syncSend]                                 default: " + syncSend + "\n" 
+		+ "[props=<path to props file>]               default: not used\n" 
 		+ "[transacted]                               default: " + transacted + "\n" 		
 		+ "[persistent]                               default: " + persistent + "\n" 
 		+ "[reply]                                    default: " + reply + "\n" 
@@ -107,12 +116,12 @@ public class ProducerTool {
 	
 	// @formatter:on
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
 
 		ProducerTool producerTool = new ProducerTool();
 
 		// Read in the command line options
-		String[] unknown = CommandLineSupport.setOptions(producerTool, args);
+		String[] unknown = setOptions(producerTool, args);
 
 		// Exit if end user entered unknown options
 		if (unknown.length > 0) {
@@ -124,6 +133,23 @@ public class ProducerTool {
 		if (producerTool.isHelp()) {
 			System.out.println(producerTool.Usage);
 			return;
+		}
+
+		// if a props file was specified, then use the properties
+		// specified in that file
+		if (producerTool.getProps() != null) {
+			ArrayList<String> props = readProps(producerTool.getProps());
+			// if there were properties, add them
+			if (props.size() > 0) {
+				unknown = setOptions(producerTool,
+						props.toArray(new String[props.size()]));
+				// Exit if end user entered unknown options n properties file
+				if (unknown.length > 0) {
+					System.out.println("Unknown options: "
+							+ Arrays.toString(unknown));
+					System.exit(-1);
+				}
+			}
 		}
 
 		// start up the tool and worker threads
@@ -170,7 +196,8 @@ public class ProducerTool {
 			System.out.println("timeToLive           = " + timeToLive);
 			System.out.println("priority             = " + priority);
 			System.out.println("reply                = " + reply);
-			System.out.println("messageType          = " + messageType);	
+			System.out.println("messageType          = " + messageType);
+			System.out.println("props                = " + props);
 			System.out.println("sharedDestination     = " + sharedDestination);	
 			// @formatter:on
 
@@ -593,6 +620,21 @@ public class ProducerTool {
 	 */
 	public void setCyclicBarrier(CyclicBarrier cyclicBarrier) {
 		this.cyclicBarrier = cyclicBarrier;
+	}
+
+	/**
+	 * @return the props
+	 */
+	public String getProps() {
+		return props;
+	}
+
+	/**
+	 * @param props
+	 *            the props to set
+	 */
+	public void setProps(String props) {
+		this.props = props;
 	}
 
 }

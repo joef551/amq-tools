@@ -13,7 +13,11 @@
  */
 package org.redhat.amq.tools;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.util.ArrayList;
+
 import org.apache.activemq.util.IntrospectionSupport;
 
 public final class CommandLineSupport {
@@ -65,5 +69,30 @@ public final class CommandLineSupport {
 		String r[] = new String[rc.size()];
 		rc.toArray(r);
 		return r;
+	}
+
+	public static ArrayList<String> readProps(String fileName) throws Exception {
+		BufferedReader reader = null;
+		try {
+			reader = new BufferedReader(new FileReader(new File(fileName)));
+		} catch (Exception e) {
+			System.out.println("ERROR: Unable to open props file");
+			e.printStackTrace();
+			System.exit(0);
+		}
+		ArrayList<String> props = new ArrayList<String>();
+		// start reading in the properties
+		String line = null;
+		while ((line = reader.readLine()) != null) {
+			// ignore empty lines and lines that start with '#'
+			line = line.trim();
+			if (line.length() == 0 || line.startsWith("#")) {
+				continue;
+			}
+			props.add(line.trim());
+		}
+		reader.close();
+		return props;
+
 	}
 }

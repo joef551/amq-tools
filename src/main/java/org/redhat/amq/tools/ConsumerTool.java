@@ -13,6 +13,10 @@
  */
 package org.redhat.amq.tools;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
@@ -29,6 +33,9 @@ import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.ActiveMQSession;
 import org.apache.activemq.pool.PooledConnectionFactory;
 
+import static org.redhat.amq.tools.CommandLineSupport.setOptions;
+import static org.redhat.amq.tools.CommandLineSupport.readProps;
+
 /**
  * A simple AMQ client for consuming messages. Capable of spawning multiple
  * client consumer threads.
@@ -42,6 +49,7 @@ public class ConsumerTool implements ExceptionListener {
 	private String consumerName = "Fred";
 	private String selector;
 	private String clientId = "Fred";
+	private String props;
 	private int transactedBatchSize = 1;
 	private int ackMode = Session.AUTO_ACKNOWLEDGE;
 	private int threadCount = 1;
@@ -92,7 +100,8 @@ public class ConsumerTool implements ExceptionListener {
 			+ "[batchCount=<batch count>]                default: " + batchCount + "\n" 
 			+ "[threadCount=<# of consumer threads]      default: " + threadCount + "\n" 
 			+ "[sampleSize=<# of msgs to sample>]        default: " + sampleSize + "\n" 
-			+ "[ackMode=<ack mode for receives>]         default: AUTO_ACKNOWLEDGE\n" 			
+			+ "[ackMode=<ack mode for receives>]         default: AUTO_ACKNOWLEDGE\n" 
+			+ "[props=<path to props file>]              default: not used\n" 
 			+ "[transacted]                              default: " + transacted + "\n" 
 			+ "[durable]                                 default: " + durable + "\n" 
 			+ "[unsubscribe]                             default: " + unsubscribe + "\n" 
@@ -109,12 +118,13 @@ public class ConsumerTool implements ExceptionListener {
 			+ "[topic]]                                  default: " + topic + "\n";			
 	// @formatter:on
 
+	@SuppressWarnings("null")
 	public static void main(String[] args) throws Exception {
 
 		ConsumerTool consumerTool = new ConsumerTool();
 
 		// Read in the command line options
-		String[] unknown = CommandLineSupport.setOptions(consumerTool, args);
+		String[] unknown = setOptions(consumerTool, args);
 
 		// Exit if end user entered unknown options
 		if (unknown.length > 0) {
@@ -128,7 +138,24 @@ public class ConsumerTool implements ExceptionListener {
 			return;
 		}
 
-		// Else, start the tool
+		// if a props file was specified, then use the properties
+		// specified in that file
+		if (consumerTool.getProps() != null) {
+			ArrayList<String> props = readProps(consumerTool.getProps());
+			// if there were properties, add them
+			if (props.size() > 0) {
+				unknown = setOptions(consumerTool,
+						props.toArray(new String[props.size()]));
+				// Exit if end user entered unknown options n properties file
+				if (unknown.length > 0) {
+					System.out.println("Unknown options: "
+							+ Arrays.toString(unknown));
+					System.exit(-1);
+				}
+			}
+		}
+
+		// Start the tool
 		consumerTool.start();
 	}
 
@@ -154,11 +181,12 @@ public class ConsumerTool implements ExceptionListener {
 		System.out.println("rollback            = " + rollback);
 		System.out.println("unsubscribe         = " + unsubscribe);
 		System.out.println("ackMode             = " + ackMode);
+		System.out.println("props               = " + props);
 		System.out.println("sampleSize          = " + sampleSize);
 		System.out.println("selector            = " + selector);
 		System.out.println("shareConnection     = " + shareConnection);
 		System.out.println("batchCount          = " + batchCount);
-		System.out.println("sharedDestination    = " + sharedDestination);
+		System.out.println("sharedDestination   = " + sharedDestination);
 		System.out.println("pooled              = " + pooled);
 		System.out.println("maxConnections      = " + maxConnections);
 		System.out.println("idleTimeout         = " + idleTimeout);
@@ -717,6 +745,21 @@ public class ConsumerTool implements ExceptionListener {
 
 	public void setSharedDestination(boolean sharedDestination) {
 		this.sharedDestination = sharedDestination;
+	}
+
+	/**
+	 * @return the props
+	 */
+	public String getProps() {
+		return props;
+	}
+
+	/**
+	 * @param props
+	 *            the props to set
+	 */
+	public void setProps(String props) {
+		this.props = props;
 	}
 
 }
