@@ -10,11 +10,13 @@
 	<properties>
 		<spring.version>4.0.5.RELEASE</spring.version>
 		<slf4j.version>1.7.7</slf4j.version>
+		<activemq.version>5.11.0.redhat-621084</activemq.version>
 		<!-- <activemq.version>5.9.0.redhat-610379</activemq.version> -->
 		<!-- <activemq.version>5.9.0.redhat-611423</activemq.version> -->
 		<!-- <activemq.version>5.11.0.redhat-620133</activemq.version> -->
-		<activemq.version>5.8.0.redhat-60024</activemq.version>
+		<!-- <activemq.version>5.8.0.redhat-60024</activemq.version> -->
 		<!-- <activemq.version>5.8.0.redhat-60065</activemq.version> -->
+		<qpid.version>0.10.0</qpid.version>
 	</properties>
 
 	<dependencies>
@@ -32,6 +34,11 @@
 			<groupId>org.apache.activemq</groupId>
 			<artifactId>activemq-pool</artifactId>
 			<version>${activemq.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.qpid</groupId>
+			<artifactId>qpid-jms-client</artifactId>
+			<version>${qpid.version}</version>
 		</dependency>
 		<!-- Allows the client to connect via HTTP -->
 		<dependency>
@@ -80,7 +87,7 @@
 					<filters>
 						<filter>
 							<artifact>*:*</artifact>
-							<!--  exclude manifest signature files -->
+							<!-- exclude manifest signature files -->
 							<excludes>
 								<exclude>META-INF/*.SF</exclude>
 								<exclude>META-INF/*.DSA</exclude>

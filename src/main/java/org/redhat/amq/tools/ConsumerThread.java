@@ -30,7 +30,6 @@ import javax.jms.Session;
 import javax.jms.TextMessage;
 import javax.jms.Topic;
 
-import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.ActiveMQSession;
 
 public class ConsumerThread extends Thread implements Runnable,
@@ -385,10 +384,7 @@ public class ConsumerThread extends Thread implements Runnable,
 			System.out.println(s1);
 		}
 	}
-
-	private ActiveMQConnectionFactory getConnectionFactory() {
-		return ct.getConnectionFactory();
-	}
+	
 
 	private ConnectionFactory getJmsConnectionFactory() {
 		return ct.getJmsConnectionFactory();
@@ -484,6 +480,10 @@ public class ConsumerThread extends Thread implements Runnable,
 
 	private boolean isShareConnection() {
 		return ct.isShareConnection();
+	}
+	
+	private boolean isQpid(){
+		return ct.isQpid();
 	}
 
 	/**

@@ -13,15 +13,14 @@
  */
 package org.redhat.amq.tools;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import javax.jms.ConnectionFactory;
 
 import org.apache.activemq.ActiveMQConnection;
 import org.apache.activemq.ActiveMQConnectionFactory;
@@ -35,6 +34,7 @@ import static org.redhat.amq.tools.CommandLineSupport.readProps;
 public class ProducerTool {
 
 	private ActiveMQConnectionFactory connectionFactory;
+	private ConnectionFactory jmsConnectionFactory;
 	private String user = "admin";
 	private String password = "admin";
 	private String url = ActiveMQConnection.DEFAULT_BROKER_URL;
@@ -52,7 +52,8 @@ public class ProducerTool {
 	private boolean rollback;
 	private boolean help;
 	private boolean syncSend;
-	private boolean sharedDestination = true;;
+	private boolean sharedDestination = true;
+	private boolean qpid;
 	private long messageCount = 5000L;
 	private long sampleSize = 5000L;
 	private long sleepTime;
@@ -88,8 +89,8 @@ public class ProducerTool {
 
 	// @formatter:off
 	private final String Usage = "\nusage: java ProducerTool \n"
-		+ "[[user=<userid>]                           default:" + user + "\n" 			
-		+ "[password=<password>]                      default:" + password + "\n" 
+		+ "[[user=<userid>]                           default:" + getUser() + "\n" 			
+		+ "[password=<password>]                      default:" + getPassword() + "\n" 
 		+ "[subject=<queue or topic name>]            default:" + subject + "\n"  
 		+ "[url=<broker url>]                         default: " + url + "\n" 
 		+ "[group=<group id>]                         default: " + "null" + "\n" 
@@ -112,6 +113,7 @@ public class ProducerTool {
 		+ "[persistent]                               default: " + persistent + "\n" 
 		+ "[reply]                                    default: " + reply + "\n" 
 	    + "[sharedDestination]                        default: " + sharedDestination + "\n" 
+	    + "[qpid]]                                    default: " + qpid + "\n"	
 		+ "[topic]]                                   default: " + topic + "\n";	
 	
 	// @formatter:on
@@ -173,8 +175,8 @@ public class ProducerTool {
 			System.out.println("A-MQ ProducerTool");
 			// @formatter:off
 			System.out.println("url                  = " + url);										
-			System.out.println("user                 = " + user);
-			System.out.println("password             = " + password);
+			System.out.println("user                 = " + getUser());
+			System.out.println("password             = " + getPassword());
 			System.out.println("subject              = " + subject);
 			System.out.println("message              = " + getMessage());
 			System.out.println("topic                = " + topic);	
@@ -198,21 +200,45 @@ public class ProducerTool {
 			System.out.println("reply                = " + reply);
 			System.out.println("messageType          = " + messageType);
 			System.out.println("props                = " + props);
-			System.out.println("sharedDestination     = " + sharedDestination);	
+			System.out.println("qpid                 = " + qpid);
+			System.out.println("sharedDestination    = " + sharedDestination);	
 			// @formatter:on
 
 			// Create the ActiveMQ connection factory.
-			connectionFactory = new ActiveMQConnectionFactory(user, password,
-					url);
+			// if !qpid, then we're using the ActiveMQ connection factory
+			if (!isQpid()) {
+				connectionFactory = new ActiveMQConnectionFactory(getUser(),
+						getPassword(), getUrl());
 
-			if (isTopic() && isSyncSend()) {
-				System.out.println("setting sync send for topic");
-				connectionFactory.setAlwaysSyncSend(true);
+				if (isTopic() && isSyncSend()) {
+					System.out.println("setting sync send for topic");
+					connectionFactory.setAlwaysSyncSend(true);
+				}
+				setJmsConnectionFactory(connectionFactory);
+			} else {
+
+				// using a qpid connection factory
+				// if URL is set to default openwire, then switch to default
+				// qpid
+				if (getUrl().equals(ActiveMQConnection.DEFAULT_BROKER_URL)) {
+					setUrl("amqp://localhost:5672");
+				}
+				setJmsConnectionFactory(new org.apache.qpid.jms.JmsConnectionFactory(
+						getUser(), getPassword(), getUrl()));
+				// when using qpid, destinations must be prefixed, else the
+				// destination will not be auto-created on demand and the client
+				// will get a AMQ219010 ERROR
+				if (!isTopic()) {
+					setSubject("jms.queue." + getSubject());
+				} else {
+					setSubject("jms.topic." + getSubject());
+				}
 			}
 
 			// latch used to wait for producer threads to complete
 			setLatch(new CountDownLatch(getThreadCount()));
 
+			// use a cyclic barrier to have all threads start at the same time
 			setCyclicBarrier(new CyclicBarrier(getThreadCount()));
 
 			// create the thread pool and start the producer threads
@@ -338,6 +364,10 @@ public class ProducerTool {
 
 	public void setUrl(String url) {
 		this.url = url;
+	}
+
+	public String getUrl() {
+		return this.url;
 	}
 
 	public void setUser(String user) {
@@ -635,6 +665,50 @@ public class ProducerTool {
 	 */
 	public void setProps(String props) {
 		this.props = props;
+	}
+
+	/**
+	 * @return the qpid
+	 */
+	public boolean isQpid() {
+		return qpid;
+	}
+
+	/**
+	 * @param qpid
+	 *            the qpid to set
+	 */
+	public void setQpid(boolean qpid) {
+		this.qpid = qpid;
+	}
+
+	/**
+	 * @return the user
+	 */
+	private String getUser() {
+		return user;
+	}
+
+	/**
+	 * @return the password
+	 */
+	private String getPassword() {
+		return password;
+	}
+
+	/**
+	 * @return the jmsConnectionFactory
+	 */
+	public ConnectionFactory getJmsConnectionFactory() {
+		return jmsConnectionFactory;
+	}
+
+	/**
+	 * @param jmsConnectionFactory
+	 *            the jmsConnectionFactory to set
+	 */
+	public void setJmsConnectionFactory(ConnectionFactory jmsConnectionFactory) {
+		this.jmsConnectionFactory = jmsConnectionFactory;
 	}
 
 }

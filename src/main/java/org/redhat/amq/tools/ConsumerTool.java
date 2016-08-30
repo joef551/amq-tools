@@ -13,9 +13,6 @@
  */
 package org.redhat.amq.tools;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.Executors;
@@ -32,6 +29,8 @@ import org.apache.activemq.ActiveMQConnection;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.ActiveMQSession;
 import org.apache.activemq.pool.PooledConnectionFactory;
+
+import org.apache.qpid.jms.JmsConnectionFactory;
 
 import static org.redhat.amq.tools.CommandLineSupport.setOptions;
 import static org.redhat.amq.tools.CommandLineSupport.readProps;
@@ -71,6 +70,7 @@ public class ConsumerTool implements ExceptionListener {
 	private boolean pooled;
 	private boolean optimizeAcknowledge;
 	private boolean dispatchAsync;
+	private boolean qpid;
 	private long sleepTime;
 	private long receiveTimeout;
 	private long sampleResetTime = 10000L;
@@ -80,7 +80,7 @@ public class ConsumerTool implements ExceptionListener {
 	private ActiveMQConnectionFactory connectionFactory;
 	private PooledConnectionFactory pooledConnectionFactory;
 	private ConnectionFactory jmsConnectionFactory;
-
+	
 	private Connection connection;
 	private ExecutorService threadPool;
 	private CountDownLatch latch;
@@ -115,6 +115,7 @@ public class ConsumerTool implements ExceptionListener {
 			+ "[receiveTimeout]                          default: " + receiveTimeout + "\n" 
 			+ "[expiryTimeout]                           default: " + expiryTimeout + "\n" 
 			+ "[sampleResetTime]                         default: " + sampleResetTime + "\n" 
+			+ "[qpid]]                                   default: " + qpid + "\n"	
 			+ "[topic]]                                  default: " + topic + "\n";			
 	// @formatter:on
 
@@ -188,6 +189,7 @@ public class ConsumerTool implements ExceptionListener {
 		System.out.println("batchCount          = " + batchCount);
 		System.out.println("sharedDestination   = " + sharedDestination);
 		System.out.println("pooled              = " + pooled);
+		System.out.println("qpid                = " + qpid);
 		System.out.println("maxConnections      = " + maxConnections);
 		System.out.println("idleTimeout         = " + idleTimeout);
 		System.out.println("receiveTimeout      = " + receiveTimeout);
@@ -215,20 +217,43 @@ public class ConsumerTool implements ExceptionListener {
 			System.out.println("ackMode          =  SESSION_TRANSACTED");
 		}
 
-		setConnectionFactory(new ActiveMQConnectionFactory(user, password, url));
+		// if !qpid, then we're using the ActiveMQ connection factory
+		if (!isQpid()) {
+			setConnectionFactory(new ActiveMQConnectionFactory(getUser(),
+					getPassword(), getUrl()));
 
-		// Create the connection factory used by the consumer threads. Note that
-		// it doesn't make sense to use a pooled connection factory if the
-		// connection is shared
-		if (!isShareConnection() && isPooled()) {
-			setPooledConnectionFactory(new PooledConnectionFactory(
-					getConnectionFactory()));
-			getPooledConnectionFactory().setMaxConnections(getMaxConnections());
-			getPooledConnectionFactory().setExpiryTimeout(getExpiryTimeout());
-			getPooledConnectionFactory().setIdleTimeout(getIdleTimeout());
-			setJmsConnectionFactory(getPooledConnectionFactory());
+			// Create the connection factory used by the consumer threads. Note
+			// that
+			// it doesn't make sense to use a pooled connection factory if the
+			// connection is shared
+			if (!isShareConnection() && isPooled()) {
+				setPooledConnectionFactory(new PooledConnectionFactory(
+						getConnectionFactory()));
+				getPooledConnectionFactory().setMaxConnections(
+						getMaxConnections());
+				getPooledConnectionFactory().setExpiryTimeout(
+						getExpiryTimeout());
+				getPooledConnectionFactory().setIdleTimeout(getIdleTimeout());
+				setJmsConnectionFactory(getPooledConnectionFactory());
+			} else {
+				setJmsConnectionFactory(getConnectionFactory());
+			}
 		} else {
-			setJmsConnectionFactory(getConnectionFactory());
+			// using a qpid connection factory
+			// if URL is set to default openwire, then switch to default qpid
+			if (getUrl().equals(ActiveMQConnection.DEFAULT_BROKER_URL)) {
+				setUrl("amqp://localhost:5672");
+			}
+			setJmsConnectionFactory(new org.apache.qpid.jms.JmsConnectionFactory(
+					getUser(), getPassword(), getUrl()));
+			// when using qpid, destinations must be prefixed, else the
+			// destination will not be auto-created on demand and the client
+			// will get a AMQ219010 ERROR
+			if (!isTopic()) {
+				setSubject("jms.queue." + getSubject());
+			} else {
+				setSubject("jms.topic." + getSubject());
+			}
 		}
 
 		// if the connection is not to be shared amongst the worker threads,
@@ -760,6 +785,21 @@ public class ConsumerTool implements ExceptionListener {
 	 */
 	public void setProps(String props) {
 		this.props = props;
+	}
+
+	/**
+	 * @return the qpid
+	 */
+	public boolean isQpid() {
+		return qpid;
+	}
+
+	/**
+	 * @param qpid
+	 *            the qpid to set
+	 */
+	public void setQpid(boolean qpid) {
+		this.qpid = qpid;
 	}
 
 }

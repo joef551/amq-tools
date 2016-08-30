@@ -21,6 +21,7 @@ import java.util.concurrent.CyclicBarrier;
 
 import javax.jms.BytesMessage;
 import javax.jms.Connection;
+import javax.jms.ConnectionFactory;
 import javax.jms.DeliveryMode;
 import javax.jms.Destination;
 import javax.jms.JMSException;
@@ -101,7 +102,7 @@ public class ProducerThread implements Runnable, ExceptionListener {
 
 		try {
 			log("Creating connection...");
-			setConnection(getConnectionFactory().createConnection());
+			setConnection(getJmsConnectionFactory().createConnection());
 
 			log("Starting connection...");
 			getConnection().start();
@@ -447,6 +448,10 @@ public class ProducerThread implements Runnable, ExceptionListener {
 	public long getBatchSleep() {
 		return pt.getBatchSleep();
 	}
+	
+	private boolean isQpid(){
+		return pt.isQpid();
+	}
 
 	private String createRandomString() {
 		Random random = new Random(System.currentTimeMillis());
@@ -466,6 +471,10 @@ public class ProducerThread implements Runnable, ExceptionListener {
 
 	public ActiveMQConnectionFactory getConnectionFactory() {
 		return pt.getConnectionFactory();
+	}
+	
+	public ConnectionFactory getJmsConnectionFactory() {
+		return pt.getJmsConnectionFactory();
 	}
 
 	/**
@@ -602,5 +611,7 @@ public class ProducerThread implements Runnable, ExceptionListener {
 	public void setCyclicBarrier(CyclicBarrier cyclicBarrier) {
 		this.cyclicBarrier = cyclicBarrier;
 	}
+	
+	
 
 }
