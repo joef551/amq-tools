@@ -162,6 +162,7 @@ public class ConsumerThread extends Thread implements Runnable,
 	}
 
 	public void onMessage(Message message) {
+
 		try {
 
 			long lastRcvTime = getMsgReceiveTime();
@@ -233,12 +234,17 @@ public class ConsumerThread extends Thread implements Runnable,
 			// not transacted.
 			if (!isTransacted() && message.getJMSReplyTo() != null) {
 				if (isVerbose()) {
-					log("replying");
+					log("replying to " + message.getJMSReplyTo().toString());
 				}
-				replyProducer.send(
-						message.getJMSReplyTo(),
-						session.createTextMessage("Reply: "
-								+ message.getJMSMessageID()));
+				TextMessage tMsg = session.createTextMessage("Reply: "
+						+ message.getJMSMessageID());
+				// use the incoming correlation id, if one is present in 
+				// the incoming message
+				if (message.getJMSCorrelationID() != null
+						&& message.getJMSCorrelationID().length() > 0) {
+					tMsg.setJMSCorrelationID(message.getJMSCorrelationID());
+				}
+				replyProducer.send(message.getJMSReplyTo(), tMsg);
 			}
 
 			// Increment the message count and start the clock if this is the
@@ -384,7 +390,6 @@ public class ConsumerThread extends Thread implements Runnable,
 			System.out.println(s1);
 		}
 	}
-	
 
 	private ConnectionFactory getJmsConnectionFactory() {
 		return ct.getJmsConnectionFactory();
@@ -481,8 +486,8 @@ public class ConsumerThread extends Thread implements Runnable,
 	private boolean isShareConnection() {
 		return ct.isShareConnection();
 	}
-	
-	private boolean isQpid(){
+
+	private boolean isQpid() {
 		return ct.isQpid();
 	}
 
