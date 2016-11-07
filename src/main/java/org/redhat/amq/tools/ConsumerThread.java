@@ -98,8 +98,11 @@ public class ConsumerThread extends Thread implements Runnable,
 					&& !"null".equals(getClientId())) {
 				log(getThreadID() + ":setting clientID = " + getClientId()
 						+ "...");
-				connection.setClientID(getConsumerName() + getThreadID());
+				connection.setClientID(getClientId() + getThreadID());
 			}
+			
+			// For test purposed only
+			//connection.setClientID(getClientId());
 
 			if (!isShareConnection()) {
 				connection.setExceptionListener(this);
