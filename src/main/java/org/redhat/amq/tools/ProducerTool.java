@@ -59,6 +59,7 @@ public class ProducerTool {
 	private long sleepTime;
 	private long timeToLive;
 	private long batchSleep;
+	private long replyWaitTime = 5000L;
 	private int transactedBatchSize = 1;
 	private int messageSize = 256;
 	private int batchCount = 1;
@@ -104,6 +105,7 @@ public class ProducerTool {
 		+ "[sampleSize=<# of msgs to sample>]         default: " + sampleSize + "\n"
 		+ "[batchCount=<# of msg batches to send]     default: " + batchCount + "\n"
 		+ "[batchSleep=<sleep time between batch>]    default: " + batchSleep + "\n"
+		+ "[replyWaitTime=<time to wait for reply]    default: " + replyWaitTime + "\n"
 		+ "[messageType=<message type to send]        default: " + messageType + "\n"
 		+ "[threadCount=<# of producer threads]       default: " + threadCount + "\n" 
 		+ "[transactedBatchSize=<trx batch size>]     default: " + transactedBatchSize + "\n"		
@@ -193,6 +195,7 @@ public class ProducerTool {
 			System.out.println("messageSize          = " + messageSize);
 			System.out.println("batchCount           = " + batchCount);
 			System.out.println("batchSleep           = " + batchSleep);
+			System.out.println("replyWaitTime        = " + replyWaitTime);
 			System.out.println("threadCount          = " + threadCount);
 			System.out.println("sleepTime            = " + sleepTime);
 			System.out.println("timeToLive           = " + timeToLive);
@@ -709,6 +712,20 @@ public class ProducerTool {
 	 */
 	public void setJmsConnectionFactory(ConnectionFactory jmsConnectionFactory) {
 		this.jmsConnectionFactory = jmsConnectionFactory;
+	}
+
+	/**
+	 * @return the replyWaitTime
+	 */
+	public long getReplyWaitTime() {
+		return replyWaitTime;
+	}
+
+	/**
+	 * @param replyWaitTime the replyWaitTime to set
+	 */
+	public void setReplyWaitTime(long replyWaitTime) {
+		this.replyWaitTime = replyWaitTime;
 	}
 
 }
