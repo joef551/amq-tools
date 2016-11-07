@@ -264,7 +264,7 @@ public class ProducerThread implements Runnable, ExceptionListener {
 			// if request-reply has been requested, then wait
 			// for consumer's reply
 			if (running && isReply()) {
-				Message receivedMessage = consumer.receive(5000);
+				Message receivedMessage = consumer.receive(getReplyWaitTime());
 				if (receivedMessage == null) {
 					throw new Exception(
 							"Reply message not received within allotted time");
@@ -352,6 +352,10 @@ public class ProducerThread implements Runnable, ExceptionListener {
 		} else if (getThreadID() == 1) {
 			System.out.println("[" + getThreadID() + "] " + str);
 		}
+	}
+
+	private long getReplyWaitTime() {
+		return pt.getReplyWaitTime();
 	}
 
 	private String getMessage() {
@@ -448,8 +452,8 @@ public class ProducerThread implements Runnable, ExceptionListener {
 	public long getBatchSleep() {
 		return pt.getBatchSleep();
 	}
-	
-	private boolean isQpid(){
+
+	private boolean isQpid() {
 		return pt.isQpid();
 	}
 
@@ -472,7 +476,7 @@ public class ProducerThread implements Runnable, ExceptionListener {
 	public ActiveMQConnectionFactory getConnectionFactory() {
 		return pt.getConnectionFactory();
 	}
-	
+
 	public ConnectionFactory getJmsConnectionFactory() {
 		return pt.getJmsConnectionFactory();
 	}
@@ -611,7 +615,5 @@ public class ProducerThread implements Runnable, ExceptionListener {
 	public void setCyclicBarrier(CyclicBarrier cyclicBarrier) {
 		this.cyclicBarrier = cyclicBarrier;
 	}
-	
-	
 
 }
