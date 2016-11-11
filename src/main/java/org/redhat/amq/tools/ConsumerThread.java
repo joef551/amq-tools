@@ -92,17 +92,23 @@ public class ConsumerThread extends Thread implements Runnable,
 				log("Sharing connection...");
 			}
 
-			// TODO: You cannot share a connection and do the following!!
+			// Durable topic subscriber?
 			if (isDurable() && isTopic() && getClientId() != null
 					&& !getClientId().isEmpty()
 					&& !"null".equals(getClientId())) {
+
+				if (this.isShareConnection()) {
+					// You cannot share connections for durable
+					// topic subscribers!
+					System.out.println(getThreadID()
+							+ ": Error, sharing of connection not "
+							+ "allowed for durable topic subscribers");
+					return;
+				}
 				log(getThreadID() + ":setting clientID = " + getClientId()
 						+ "...");
 				connection.setClientID(getClientId() + getThreadID());
 			}
-			
-			// For test purposed only
-			//connection.setClientID(getClientId());
 
 			if (!isShareConnection()) {
 				connection.setExceptionListener(this);
@@ -241,7 +247,7 @@ public class ConsumerThread extends Thread implements Runnable,
 				}
 				TextMessage tMsg = session.createTextMessage("Reply: "
 						+ message.getJMSMessageID());
-				// use the incoming correlation id, if one is present in 
+				// use the incoming correlation id, if one is present in
 				// the incoming message
 				if (message.getJMSCorrelationID() != null
 						&& message.getJMSCorrelationID().length() > 0) {
