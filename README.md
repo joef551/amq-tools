@@ -3,7 +3,7 @@
 Simple Producer and Consumer Tool for ActiveMQ
 ======
 
-The idea behind this project is to provide an ActiveMQ client tool that can be used to simulate a variety of different client (producer or consumer) use cases. 
+The idea behind this project is to provide an ActiveMQ JMS client tool that can be used to simulate a variety of different client (producer or consumer) use cases. 
 
 Run the following to build the project:
  
@@ -67,6 +67,9 @@ Some examples:
 
 	$ runc props=/tmp/myprops
 
+13.	Run the consumer and have it derive the connection factory from the jndi.properties file. 
+
+	$ runc jndi 
 
 
 The consumer will dump sampling statistics, such as the ones below, each time it reaches the sampleSize (default = 5000).
@@ -108,13 +111,14 @@ durable	| false	 | Whether or not this is a durable topic subscriber. Only valid
 maxMessages	|0 (no limit) |	The maximum number of messages to receive after which the consumer terminates. If maxMessages is > 0, it defines a *batch*
 batchCount	|1 | If maxMessages is > 0, batchCount governs the number of consumer objects used to read the batches. For example, if maxMessages is 10 and batchCount is 5, then a consumer object is terminated after it reads 10 messages and a new one is created to take its place; this cycling will occur 5 times and thus the client will only read a total of 50 messages. If set to 0, the cycling will occur indefinitely. persistent|	false |	Whether to send persistent or non-persistent (transient) reply messages back to the producer.receiveTimeout|	0 (no time limit)|	Stop receiving messages and terminate if a message does not arrive within the specified number of milliseconds. 
 transacted	|false|	Whether to receive messages within a local JMS transaction. transactedBatchSize	 |1 |	The number of messages to batch in a transaction. Only used if transacted is set to true.rollback|	false|	When set to true, the consumer rolls back the trx instead of committing it. sampleSize	|5000 |	The number of messages at which a sampling is taken and the results of which are displayed. 
-sampleResetTime	|10000 |	If a message is not received within this amount of time (ms), the sampling statistics are reset.   sleepTime |	0|	The number of milliseconds to sleep in between each message that is consumed. You can use this to mimic a slow consumer. Sleep occurs before message acknowledge or commit.subject	|TOOL.DEFAULT |	The name of the target destination (topic or queue).durable|false| Used for creating a durable subscriber. The 'topic' option must be specifiedurl	|failover://tcp://localhost:61616	|The url that is used for connecting to the ActiveMQ message broker. You can assign it all the options described [here](http://activemq.apache.org/connection-configuration-uri.html)user |	admin |	The user name that is used for establishing a connection with ActiveMQ.
+sampleResetTime	|10000 |	If a message is not received within this amount of time (ms), the sampling statistics are reset.   sleepTime |	0|	The number of milliseconds to sleep in between each message that is consumed. You can use this to mimic a slow consumer. Sleep occurs before message acknowledge or commit.subject	|TOOL.DEFAULT |	The name of the target destination (topic or queue).durable|false| Used for creating a durable subscriber. The 'topic' option must be specifiedurl	|failover://tcp://localhost:61616	|The url that is used for connecting to the ActiveMQ message broker. You can assign it all the options described [here](http://activemq.apache.org/connection-configuration-uri.html). This property is ignored when the **jndi** property is set to true.user |	admin |	The user name that is used for establishing a connection with ActiveMQ.
 password |	admin |	The password that is used for establishing a connection with ActiveMQ.verbose |	false	| When set to true, each message that is consumed will be written out to the console. threadCount | 1 | The number of consumer threads to spawn. When more than one thread, only the first will log messages. 
 sharedConnection | false | When set to false, all consumer threads will create their own separate connection. When set to true all consumer threads will share one common connection, from which they all create their sessions and consumer objects. 
 sharedDestination | true | When set to false, each consumer thread consumes from its own distinct destination. The name of the destination is created by concatenating the subject with its threadCount. For example, if you set threadCount to 2 and set this property to 'false', then 2 threads are invoked with thread one and two reading from TOOL.DEFAULT0 and TOOL.DEFAULT1, respectively. This property can be used to simulate creating 100s of destinations, but it will require a corresponding number of threads. 
-pooled|false|Whether to use a pooled connection factory. Only valid when sharedConnection is false. If the pooled connection factory is used, then these three options apply: 1) maxConnections, 2) idleTimeout, and 3) expiryTimeout.  For details on these three options click [here](http://activemq.apache.org/maven/apidocs/org/apache/activemq/pool/PooledConnectionFactory.html)
-qpid|false|When set to true, the consumer will use the qpid connection factory provided by 'org.apache.qpid.jms' 
-props|null|Is used to specify a file that contains one or more options. For example, the file may contain the option 'url=tcp://myhost:61616'. Options found in this file override those options listed on the command line. 
+pooled|false|Whether to use a pooled connection factory. **Only valid when the sharedConnection, jndi, AND qpid properties are all set to false**. If the pooled connection factory is used, then these three options apply: 1) maxConnections, 2) idleTimeout, and 3) expiryTimeout.  For details on these three options click [here](http://activemq.apache.org/maven/apidocs/org/apache/activemq/pool/PooledConnectionFactory.html)
+qpid|false|When set to true, the consumer will use the qpid connection factory provided by 'org.apache.qpid.jms'. This property is ignored when the **jndi** property is set to true.
+props|null|Is used to specify a file that contains one or more options. For example, the file may contain the option 'url=tcp://myhost:61616'. Options found in this file override those options listed on the command line.
+jndi|false|When set to true, the consumer will derive the connection factory and its url from the jndi.properties file. See the project's jndi.properties file for examples.  
 help | false | use only for displaying all consumer options (e.g., runc help) 
 
 Producer Options
@@ -128,14 +132,15 @@ messageSize |256 |	The size of the message that is produced.
 messageType |text |	The JMS message type (TextMessage, BytesMessage, ObjectMessage) to produce.  Possible values are text, bytes, and object.persistent|	false |	Whether to send persistent or non-persistent messages.
 priority|not set | The JMS priority to assign to the messagessampleSize |	5000|	The number of messages at which a sampling is taken and the results of which are displayed.  sleepTime |	0 |	The number of milliseconds to sleep in between each message produced.replyWaitTime |	5000 |	The max amount of time to wait for a reply when **reply** has been specified.subject |	TOOL.DEFAULT |	The name of the target destination (topic or queue)timeToLive |	0 (does not expire)	|The message expiration time in milliseconds. topic |	false (queue)|	Whether to send to a topic or queue.
 syncSend |	false |	If sending to topic, whether to issue sync, as opposed to async, sends transacted|	false|	Whether to send messages within the context of a local JMS transactiontransactedBatchSize |	1	| The number of messages to batch in a transaction. Only used if transacted is set to true.rollback|	false|	When set to true, the producer rolls back the trx instead of committing it. 
-reply | false | Whether to implement request-reply pattern. **NB: Ignored if (transacted == 'true' and (transactedBatchSize > 1 or rollback == 'true'))** url	|failover://tcp://localhost:61616	|The url that is used for connecting to the ActiveMQ message broker.user	|admin|	The user name that is used for establishing a connection with ActiveMQ.
+reply | false | Whether to implement request-reply pattern. **NB: Ignored if (transacted == 'true' and (transactedBatchSize > 1 or rollback == 'true'))** url	|failover://tcp://localhost:61616	|The url that is used for connecting to the ActiveMQ message broker. This property is ignored when the **jndi** property is set to true.user	|admin|	The user name that is used for establishing a connection with ActiveMQ.
 password |	admin |	The password that is used for establishing a connection with ActiveMQ.verbose|false|	When set to true, each message that is produced is written out to the console.
 threadCount | 1 | The number of producer threads to spawn.
 sharedDestination | true | When set to false, each producer thread produces to its own distinct destination. The name of the destination is created by concatenating the subject with its threadCount. For example, if you set threadCount to 2 and set this property to 'false', then 2 threads are invoked with thread one and two producing to TOOL.DEFAULT0 and TOOL.DEFAULT1, respectively.  
 group | null | The group name to assign to the JMSXGROUPID header
 header|null|A custom header (property) to be assigned to each message produced. The supplied value must be in the form of "key:value". For example, header=foo:bar, where 'foo' is header key (name) and 'bar' is its value. If there is a space character in the header value, then use '%20'. For example header=fullName:Mary%20Smith
-qpid|false|When set to true, the producer will use the qpid connection factory provided by 'org.apache.qpid.jms' 
+qpid|false|When set to true, the producer will use the qpid connection factory provided by 'org.apache.qpid.jms'. This property is ignored when the **jndi** property is set to true.
 props|null|Is used to specify a file that contains one or more options. For example, the file may contain the option 'url=tcp://myhost:61616'. Options found in this file override those options listed on the command line. 
+jndi | false | When set to true, the producer will derive the connection factory and its url from the jndi.properties file. See the project's jndi.properties file for examples.
 help | false | use only for displaying all producer options (e.g., runp help) 
 
 

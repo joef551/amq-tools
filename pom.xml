@@ -10,16 +10,23 @@
 	<properties>
 		<spring.version>4.0.5.RELEASE</spring.version>
 		<slf4j.version>1.7.7</slf4j.version>
-		<activemq.version>5.11.0.redhat-621084</activemq.version>  
+		<!--  <activemq.version>5.11.0.redhat-621084</activemq.version> --> 
+		<activemq.version>5.11.0.redhat-630133</activemq.version>  	
 		<!-- <activemq.version>5.9.0.redhat-610379</activemq.version> --> 
 		<!-- <activemq.version>5.9.0.redhat-611423</activemq.version> -->
 		<!-- <activemq.version>5.11.0.redhat-620133</activemq.version> --> 
 		<!-- <activemq.version>5.8.0.redhat-60024</activemq.version> -->
 		<!-- <activemq.version>5.8.0.redhat-60065</activemq.version> -->
-		<qpid.version>0.11.0</qpid.version>
+		<artemis.version>1.2.0.amq-700007-redhat-1</artemis.version>
+		<qpid.version>0.11.1</qpid.version>
 	</properties>
 
 	<dependencies>
+		<dependency>
+			<groupId>org.apache.activemq</groupId>
+			<artifactId>artemis-jms-client</artifactId>
+			<version>${artemis.version}</version>
+		</dependency>
 		<dependency>
 			<groupId>org.apache.activemq</groupId>
 			<artifactId>activemq-client</artifactId>

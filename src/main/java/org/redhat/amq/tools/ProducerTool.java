@@ -20,6 +20,7 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import javax.naming.InitialContext;
 import javax.jms.ConnectionFactory;
 
 import org.apache.activemq.ActiveMQConnection;
@@ -52,6 +53,7 @@ public class ProducerTool {
 	private boolean rollback;
 	private boolean help;
 	private boolean syncSend;
+	private boolean jndi;
 	private boolean sharedDestination = true;
 	private boolean qpid;
 	private long messageCount = 5000L;
@@ -67,6 +69,8 @@ public class ProducerTool {
 	private int threadCount = 1;
 	private CountDownLatch latch;
 	private ExecutorService threadPool;
+
+	InitialContext initialContext;
 
 	enum MessageType {
 		TEXT, OBJECT, BYTES;
@@ -114,6 +118,7 @@ public class ProducerTool {
 		+ "[transacted]                               default: " + transacted + "\n" 		
 		+ "[persistent]                               default: " + persistent + "\n" 
 		+ "[reply]                                    default: " + reply + "\n" 
+		+ "[jndi]                                     default: " + jndi + "\n"	
 	    + "[sharedDestination]                        default: " + sharedDestination + "\n" 
 	    + "[qpid]]                                    default: " + qpid + "\n"	
 		+ "[topic]]                                   default: " + topic + "\n";	
@@ -175,8 +180,7 @@ public class ProducerTool {
 
 			// display settings for this run
 			System.out.println("A-MQ ProducerTool");
-			// @formatter:off
-			System.out.println("url                  = " + url);										
+			// @formatter:off													
 			System.out.println("user                 = " + getUser());
 			System.out.println("password             = " + getPassword());
 			System.out.println("subject              = " + subject);
@@ -188,6 +192,7 @@ public class ProducerTool {
 			System.out.println("headerValue          = " + headerValue);
 			System.out.println("persistent           = " + persistent);
 			System.out.println("transacted           = " + transacted);
+			System.out.println("jndi                = " + jndi);
 			System.out.println("transactedBatchSize  = " + transactedBatchSize);
 			System.out.println("rollback             = " + rollback);			
 			System.out.println("sampleSize           = " + sampleSize);		
@@ -207,9 +212,27 @@ public class ProducerTool {
 			System.out.println("sharedDestination    = " + sharedDestination);	
 			// @formatter:on
 
-			// Create the ActiveMQ connection factory.
-			// if !qpid, then we're using the ActiveMQ connection factory
-			if (!isQpid()) {
+			// Create the connection factory.
+
+			if (isJndi()) {
+				// if we've been told to use JNDI, then we fetch the
+				// connection factory from the JNDI
+				initialContext = new InitialContext();
+				setJmsConnectionFactory((ConnectionFactory) initialContext
+						.lookup("ConnectionFactory"));
+				System.out.println("Connecting with JNDI context: "
+						+ initialContext.getEnvironment());
+
+				// set the qpid flag to true if the qpid jndi factory is being
+				// used
+				if (initialContext.getEnvironment().toString()
+						.indexOf("org.apache.qpid.jms.jndi") >= 0) {
+					setQpid(true);
+				}
+
+			} else if (!isQpid()) {
+				System.out.println("Connecting to URL: " + url);
+				// if !qpid, then we're using the ActiveMQ connection factory
 				connectionFactory = new ActiveMQConnectionFactory(getUser(),
 						getPassword(), getUrl());
 
@@ -219,7 +242,7 @@ public class ProducerTool {
 				}
 				setJmsConnectionFactory(connectionFactory);
 			} else {
-
+				System.out.println("Connecting to URL: " + url);
 				// using a qpid connection factory
 				// if URL is set to default openwire, then switch to default
 				// qpid
@@ -228,6 +251,9 @@ public class ProducerTool {
 				}
 				setJmsConnectionFactory(new org.apache.qpid.jms.JmsConnectionFactory(
 						getUser(), getPassword(), getUrl()));
+			}
+
+			if (isQpid()) {
 				// when using qpid, destinations must be prefixed, else the
 				// destination will not be auto-created on demand and the client
 				// will get a AMQ219010 ERROR
@@ -550,6 +576,14 @@ public class ProducerTool {
 		return syncSend;
 	}
 
+	public boolean isJndi() {
+		return jndi;
+	}
+
+	public void setJndi(boolean jndi) {
+		this.jndi = jndi;
+	}
+
 	/**
 	 * @param header
 	 *            the header and its value to set
@@ -722,7 +756,8 @@ public class ProducerTool {
 	}
 
 	/**
-	 * @param replyWaitTime the replyWaitTime to set
+	 * @param replyWaitTime
+	 *            the replyWaitTime to set
 	 */
 	public void setReplyWaitTime(long replyWaitTime) {
 		this.replyWaitTime = replyWaitTime;
