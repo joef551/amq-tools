@@ -71,6 +71,11 @@ Some examples:
 
 	$ runc jndi 
 
+14. Run the consumer and it connect to the broker via an Apache Qpid provided AMQP connection. This is an example of what you need to do to have the consumer connect to A-MQ 7 (a.k.a., Artemis) via AMQP.  
+
+    $ runc url=amqp://10.0.1.21:5672 qpid
+
+
 
 The consumer will dump sampling statistics, such as the ones below, each time it reaches the sampleSize (default = 5000).
 
@@ -138,7 +143,7 @@ threadCount | 1 | The number of producer threads to spawn.
 sharedDestination | true | When set to false, each producer thread produces to its own distinct destination. The name of the destination is created by concatenating the subject with its threadCount. For example, if you set threadCount to 2 and set this property to 'false', then 2 threads are invoked with thread one and two producing to TOOL.DEFAULT0 and TOOL.DEFAULT1, respectively.  
 group | null | The group name to assign to the JMSXGROUPID header
 header|null|A custom header (property) to be assigned to each message produced. The supplied value must be in the form of "key:value". For example, header=foo:bar, where 'foo' is header key (name) and 'bar' is its value. If there is a space character in the header value, then use '%20'. For example header=fullName:Mary%20Smith
-qpid|false|When set to true, the consumer will use the qpid connection factory provided by the 'org.apache.qpid.jms' package, which is made available by [Apache Qpid](https://qpid.apache.org). This property is ignored when the **jndi** property is set to true. If you're not using jndi and you'd like the client to connect to AMQ-7 (a.k.a., Artemis) via AMQP, then set this property to true and use a URL scheme of 'amqp' (e.g., url=amqp://...). When using Apache Qpid, click [here](https://qpid.apache.org/releases/qpid-jms-0.20.0/docs/index.html#logging) to learn how to enable frame-level debug. It comes in quite handy when troubleshooting.   
+qpid|false|When set to true, the producer will use the qpid connection factory provided by the 'org.apache.qpid.jms' package, which is made available by [Apache Qpid](https://qpid.apache.org). This property is ignored when the **jndi** property is set to true. If you're not using jndi and you'd like the client to connect to AMQ-7 (a.k.a., Artemis) via AMQP, then set this property to true and use a URL scheme of 'amqp' (e.g., url=amqp://...). When using Apache Qpid, click [here](https://qpid.apache.org/releases/qpid-jms-0.20.0/docs/index.html#logging) to learn how to enable frame-level debug. It comes in quite handy when troubleshooting.   
 props|null|Is used to specify a file that contains one or more options. For example, the file may contain the option 'url=tcp://myhost:61616'. Options found in this file override those options listed on the command line. 
 jndi | false | When set to true, the producer will derive the connection factory and its url from the jndi.properties file. See the project's jndi.properties file for examples.
 help | false | use only for displaying all producer options (e.g., runp help) 
