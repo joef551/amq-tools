@@ -3,7 +3,7 @@
 Simple Producer and Consumer Tool for ActiveMQ
 ======
 
-The idea behind this project is to provide an ActiveMQ JMS client tool that can be used to simulate a variety of different client (producer or consumer) use cases. 
+The idea behind this project is to provide an ActiveMQ JMS client tool that can be used to simulate a variety of different client (producer or consumer) use cases. The JMS client (tool) is capable of connecting to either an ActiveMQ 6.x or 7.x (a.k.a., Artemis) broker. It can use the ActiveMQ 6.x OpenWire protocol to connect to either version of the broker, AMQP to connect to ActiveMQ 7, and the ActiveMQ 7 native protocol.   
 
 Run the following to build the project:
  
@@ -27,7 +27,7 @@ Some examples:
 
 	$ runp user=fred password=admin persistent 
 	
-	Note that the default URL to connect to the broker is <i>failover://tcp://localhost:61616</i>.
+	Note that the default URL to connect to the broker is <i>failover://tcp://localhost:61616</i>. The target broker can be either a 6.x or 7.x broker. 
 
 4. Same as above, but spawns 100 producer threads; each will create its own connection to the broker
 
@@ -71,7 +71,7 @@ Some examples:
 
 	$ runc jndi 
 
-14. Run the consumer and it connect to the broker via an Apache Qpid provided AMQP connection. This is an example of what you need to do to have the consumer connect to A-MQ 7 (a.k.a., Artemis) via AMQP.  
+14. Run the consumer and have it connect to a A-MQ 7  (a.k.a., Artemis) broker via an Apache Qpid provided AMQP connection. This is an example of what you need to do to have the consumer connect to A-MQ 7 via AMQP.  
 
     $ runc url=amqp://10.0.1.21:5672 qpid
 
