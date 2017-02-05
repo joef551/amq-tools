@@ -253,18 +253,7 @@ public class ProducerTool {
 						getUser(), getPassword(), getUrl()));
 			}
 
-			if (isQpid()) {
-				// when using qpid, destinations must be prefixed, else the
-				// destination will not be auto-created on demand and the client
-				// will get a AMQ219010 ERROR
-				if (!isTopic()) {
-					setSubject("jms.queue." + getSubject());
-				} else {
-					setSubject("jms.topic." + getSubject());
-				}
-			}
-
-			// latch used to wait for producer threads to complete
+		    // latch used to wait for producer threads to complete
 			setLatch(new CountDownLatch(getThreadCount()));
 
 			// use a cyclic barrier to have all threads start at the same time

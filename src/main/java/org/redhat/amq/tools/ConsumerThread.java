@@ -326,6 +326,7 @@ public class ConsumerThread extends Thread implements Runnable,
 			if (session != null) {
 				session.close();
 			}
+			// close the connection, but only it is not being shared
 			if (!isShareConnection() && connection != null) {
 				connection.close();
 			}
