@@ -3,7 +3,7 @@
 Simple Producer and Consumer Tool for ActiveMQ
 ======
 
-The idea behind this project is to provide an ActiveMQ JMS client tool that can be used to simulate a variety of different client (producer or consumer) use cases. The JMS client (tool) is capable of connecting to either an ActiveMQ 6.x or 7.x (a.k.a., Artemis) broker. It can use the ActiveMQ 6.x OpenWire protocol to connect to either version of the broker, AMQP to connect to ActiveMQ 7, and the ActiveMQ 7 native protocol.   
+The idea behind this project is to provide an ActiveMQ **JMS** client tool that can be used to simulate a variety of different client (producer or consumer) use cases. This JMS tool is capable of connecting to either an ActiveMQ 6.x or 7.x (a.k.a., Artemis) broker. It can use the ActiveMQ 6.x OpenWire protocol to connect to either version of the broker, AMQP to connect to ActiveMQ 7, and the ActiveMQ 7 native protocol. It can also use html to connect to an ActiveMQ 6.x broker; however, that is very seldom used.    
 
 Run the following to build the project:
  

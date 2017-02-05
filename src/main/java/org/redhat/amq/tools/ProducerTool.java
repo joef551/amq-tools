@@ -19,6 +19,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import static org.redhat.amq.tools.ConsumerTool.isQpidUrl;
 
 import javax.naming.InitialContext;
 import javax.jms.ConnectionFactory;
@@ -215,20 +216,13 @@ public class ProducerTool {
 			// Create the connection factory.
 
 			if (isJndi()) {
-				// if we've been told to use JNDI, then we fetch the
+				// if we've been told to use JNDI, then fetch the
 				// connection factory from the JNDI
 				initialContext = new InitialContext();
 				setJmsConnectionFactory((ConnectionFactory) initialContext
 						.lookup("ConnectionFactory"));
 				System.out.println("Connecting with JNDI context: "
 						+ initialContext.getEnvironment());
-
-				// set the qpid flag to true if the qpid jndi factory is being
-				// used
-				if (initialContext.getEnvironment().toString()
-						.indexOf("org.apache.qpid.jms.jndi") >= 0) {
-					setQpid(true);
-				}
 
 			} else if (!isQpid()) {
 				System.out.println("Connecting to URL: " + url);
@@ -248,12 +242,19 @@ public class ProducerTool {
 				// qpid
 				if (getUrl().equals(ActiveMQConnection.DEFAULT_BROKER_URL)) {
 					setUrl("amqp://localhost:5672");
+				} else {
+					if (!isQpidUrl(url)) {
+						System.out
+								.println("ERROR: this url doesn't have a valid qpid scheme: "
+										+ url);
+						System.exit(1);
+					}
 				}
 				setJmsConnectionFactory(new org.apache.qpid.jms.JmsConnectionFactory(
 						getUser(), getPassword(), getUrl()));
 			}
 
-		    // latch used to wait for producer threads to complete
+			// latch used to wait for producer threads to complete
 			setLatch(new CountDownLatch(getThreadCount()));
 
 			// use a cyclic barrier to have all threads start at the same time

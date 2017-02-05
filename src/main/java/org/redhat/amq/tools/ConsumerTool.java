@@ -18,6 +18,7 @@ import java.util.Arrays;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
+import java.util.regex.Pattern;
 
 import javax.naming.InitialContext;
 import javax.jms.ExceptionListener;
@@ -221,20 +222,13 @@ public class ConsumerTool implements ExceptionListener {
 		}
 
 		if (isJndi()) {
-			// if we've been told to use JNDI, then we fetch the
+			// if we've been told to use JNDI, then fetch the
 			// connection factory from the JNDI
 			initialContext = new InitialContext();
 			setJmsConnectionFactory((ConnectionFactory) initialContext
 					.lookup("ConnectionFactory"));
 			System.out.println("Connecting with JNDI context: "
 					+ initialContext.getEnvironment());
-
-			// set the qpid flag to true if the qpid jndi factory is being
-			// used
-			if (initialContext.getEnvironment().toString()
-					.indexOf("org.apache.qpid.jms.jndi") >= 0) {
-				setQpid(true);
-			}
 
 		} else if (!isQpid()) {
 			System.out.println("Connecting to URL: " + url);
@@ -264,20 +258,16 @@ public class ConsumerTool implements ExceptionListener {
 			// if URL is set to default openwire, then switch to default qpid
 			if (getUrl().equals(ActiveMQConnection.DEFAULT_BROKER_URL)) {
 				setUrl("amqp://localhost:5672");
+			} else {
+				if (!isQpidUrl(url)) {
+					System.out
+							.println("ERROR: this url doesn't have a valid qpid scheme: "
+									+ url);
+					System.exit(1);
+				}
 			}
 			setJmsConnectionFactory(new org.apache.qpid.jms.JmsConnectionFactory(
 					getUser(), getPassword(), getUrl()));
-		}
-
-		if (isQpid()) {
-			// when using qpid, destinations must be prefixed, else the
-			// destination will not be auto-created on demand and the client
-			// will get a AMQ219010 ERROR
-			if (!isTopic()) {
-				setSubject("jms.queue." + getSubject());
-			} else {
-				setSubject("jms.topic." + getSubject());
-			}
 		}
 
 		// if the connection is not to be shared amongst the worker threads,
@@ -839,6 +829,16 @@ public class ConsumerTool implements ExceptionListener {
 	 */
 	public void setJndi(boolean jndi) {
 		this.jndi = jndi;
+	}
+
+	private static Pattern qpidPattern = Pattern
+			.compile("(amqp|amqps|amqpws|amqpwss)://");
+
+	public static boolean isQpidUrl(String url) {
+		if (url == null) {
+			return false;
+		}
+		return qpidPattern.matcher(url).find();
 	}
 
 }
