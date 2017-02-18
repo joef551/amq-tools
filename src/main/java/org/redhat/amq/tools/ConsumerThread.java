@@ -29,6 +29,7 @@ import javax.jms.MessageProducer;
 import javax.jms.Session;
 import javax.jms.TextMessage;
 import javax.jms.Topic;
+import javax.jms.TransactionRolledBackException;
 
 import org.apache.activemq.ActiveMQSession;
 
@@ -200,10 +201,6 @@ public class ConsumerThread extends Thread implements Runnable,
 			// subsequently rolled back as part of a trx.
 			++countLast;
 
-			// keeps track of only those messages that are consumed and not
-			// rolled back
-			++countConsumed;
-
 			// if instructed to do so, sleep in between reads and before
 			// messages is acked or committed. this sort of simulates work that
 			// has to be done prior to the ack or commit
@@ -215,17 +212,38 @@ public class ConsumerThread extends Thread implements Runnable,
 			}
 
 			// By default, we operate in auto ack mode
+
 			if (isTransacted()) {
 				// if we've reached the transacted batch count,
 				// then either rollback or commit the trx
-				if (++transactedBatchCount == getTransactedBatchSize()) {
+				if (++transactedBatchCount == getTransactedBatchSize()) {					
 					// simulate a rollback if we're not supposed to
 					// commit the transaction
 					if (isRollback()) {
 						countConsumed -= transactedBatchCount;
 						session.rollback();
+						log("message(s) rolled back!");
 					} else {
-						session.commit();
+						// the commit may throw one of three exceptions,
+						// in which case we do not increment countConsumed
+						try {
+							session.commit();
+							// increment the number of consumed messages based
+							// on transactedBatchCount
+							countConsumed += transactedBatchCount;
+						} catch (TransactionRolledBackException e) {
+							System.out
+									.println("TransactionRolledBackException caught: countConsumed = "
+											+ countConsumed);
+						} catch (JMSException e) {
+							System.out
+									.println("JMSException caught: countConsumed = "
+											+ countConsumed);
+						} catch (IllegalStateException e) {
+							System.out
+									.println("IllegalStateException caught: countConsumed = "
+											+ countConsumed);
+						}
 					}
 					transactedBatchCount = 0;
 				}
@@ -236,7 +254,11 @@ public class ConsumerThread extends Thread implements Runnable,
 				// do not acknowledge if instructed to do so
 				if (!isRollback()) {
 					message.acknowledge();
+					++countConsumed;
 				}
+			} else {
+				// must be auto ack
+				++countConsumed;
 			}
 
 			// If requested, reply to the message, but only if the session is
