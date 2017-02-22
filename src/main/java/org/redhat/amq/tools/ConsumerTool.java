@@ -72,6 +72,7 @@ public class ConsumerTool implements ExceptionListener {
 	private boolean dispatchAsync;
 	private boolean qpid;
 	private boolean jndi;
+	private boolean virtualTopic;
 	private long sleepTime;
 	private long receiveTimeout;
 	private long sampleResetTime = 10000L;
@@ -119,7 +120,8 @@ public class ConsumerTool implements ExceptionListener {
 			+ "[receiveTimeout]                          default: " + receiveTimeout + "\n" 
 			+ "[expiryTimeout]                           default: " + expiryTimeout + "\n" 
 			+ "[sampleResetTime]                         default: " + sampleResetTime + "\n" 
-			+ "[qpid]                                    default: " + qpid + "\n"	
+			+ "[qpid]                                    default: " + qpid + "\n"
+			+ "[virtualTopic]                            default: " + virtualTopic + "\n"
 			+ "[topic]]                                  default: " + topic + "\n";			
 	// @formatter:on
 
@@ -194,6 +196,7 @@ public class ConsumerTool implements ExceptionListener {
 		System.out.println("pooled              = " + pooled);
 		System.out.println("jndi                = " + jndi);
 		System.out.println("qpid                = " + qpid);
+		System.out.println("virtualTopic        = " + virtualTopic);
 		System.out.println("maxConnections      = " + maxConnections);
 		System.out.println("idleTimeout         = " + idleTimeout);
 		System.out.println("receiveTimeout      = " + receiveTimeout);
@@ -271,7 +274,7 @@ public class ConsumerTool implements ExceptionListener {
 		}
 
 		// if the connection is not to be shared amongst the worker threads,
-		// then 'connection' will be null and the worker thread will create one
+		// then 'connection' will be null and each worker thread will create one
 		// for itself.
 		if (isShareConnection()) {
 			connection = getJmsConnectionFactory().createConnection();
@@ -286,18 +289,44 @@ public class ConsumerTool implements ExceptionListener {
 
 		// create the thread pool and start the consumer threads
 		threadPool = Executors.newFixedThreadPool(getThreadCount());
+
 		for (int i = 1; i <= getThreadCount(); i++) {
+			/*
+			 * if there is only one thread to start OR we've been asked to have
+			 * all threads share the same destination; in other words, form a
+			 * consumer cluster on one destination
+			 */
 			if (getThreadCount() == 1 || isSharedDestination()) {
 				threadPool.execute(new ConsumerThread(this, i, connection));
 			} else {
-				// create distinct destinations if there is more than one thread
-				// to invoke and we've been asked not to have all the threads
-				// share a destination; i.e., read from the same destination. in
-				// this case, each distinct destination's name is constructed as
-				// follows: "getSubject()<thread number>. For example,
-				// TOOL.DEFAULT0, TOOL.DEFAULT1, etc.
-				threadPool.execute(new ConsumerThread(this, i, connection,
-						getSubject() + Integer.toString(i)));
+				/*
+				 * if instructed to use distinct destinations and virtual
+				 * topic, then create distinct "queues" for the given virtual
+				 * topic name. in this case, each distinct destination's name is
+				 * constructed as follows:
+				 * "Consumer.<thread number>.VirtualTopic.getSubject(). For example, "
+				 * Consumer.1.VirtualTopic.Foo",  "Consumer.2.VirtualTopic.Foo",
+				 * etc
+				 */
+				if (isVirtualTopic() && !isTopic()) {
+					threadPool.execute(new ConsumerThread(this, i, connection,
+							"Consumer." + Integer.toString(i)
+									+ ".VirtualTopic." + getSubject()));
+				} else {
+					/*
+					 * create distinct destinations if there is more than one
+					 * thread to invoke and we've been asked not to have all the
+					 * threads share a destination; i.e., read from the same
+					 * destination. in this case, each distinct destination's
+					 * name is constructed as follows: "getSubject()<thread
+					 * number>. For example, TOOL.DEFAULT0, TOOL.DEFAULT1, etc.
+					 */
+					threadPool.execute(new ConsumerThread(this, i, connection,
+							getSubject() + Integer.toString(i)));
+				}
+				/*
+				 * Consumer.NUM_CONSUMERS.VirtualTopic
+				 */
 			}
 		}
 
@@ -839,6 +868,21 @@ public class ConsumerTool implements ExceptionListener {
 			return false;
 		}
 		return qpidPattern.matcher(url).find();
+	}
+
+	/**
+	 * @return the virtualTopic
+	 */
+	public boolean isVirtualTopic() {
+		return virtualTopic;
+	}
+
+	/**
+	 * @param virtualTopic
+	 *            the virtualTopic to set
+	 */
+	public void setVirtualTopic(boolean virtualTopic) {
+		this.virtualTopic = virtualTopic;
 	}
 
 }
