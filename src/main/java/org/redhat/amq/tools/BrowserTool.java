@@ -128,7 +128,9 @@ public class BrowserTool implements ExceptionListener {
 				Message tempMsg = (Message) msgs.nextElement();
 				msgCount++;
 				if (isVerbose()) {
-					System.out.println("Message: " + tempMsg.toString() + "\n");
+					System.out.println("Message: " + tempMsg.toString());
+					System.out.println("JMSMessageID = " + tempMsg.getJMSMessageID() + "\n");
+					
 				}
 			}
 		}
