@@ -13,9 +13,15 @@
  */
 package org.redhat.amq.tools;
 
+import static org.redhat.amq.tools.CommandLineSupport.readProps;
+import static org.redhat.amq.tools.CommandLineSupport.setOptions;
+import static org.redhat.amq.tools.ConsumerTool.isQpidUrl;
+
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.concurrent.ExecutorService;
+
 import javax.jms.ExceptionListener;
 import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
@@ -23,9 +29,12 @@ import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.Session;
 import javax.jms.QueueBrowser;
+import javax.naming.InitialContext;
+
 import org.apache.activemq.ActiveMQConnection;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.ActiveMQPrefetchPolicy;
+
 
 /**
  * A simple AMQ browser.
@@ -39,8 +48,12 @@ public class BrowserTool implements ExceptionListener {
 	private String consumerName = "Fred";
 	private String selector;
 	private Session session;
+	private String props;
 	private boolean help;
 	private boolean verbose = true;
+	private boolean qpid;
+	private boolean jndi;
+
 	private QueueBrowser browser;
 	private ActiveMQConnectionFactory connectionFactory;
 	private ConnectionFactory jmsConnectionFactory;
@@ -50,8 +63,10 @@ public class BrowserTool implements ExceptionListener {
 	private Connection connection;
 	private ExecutorService threadPool;
 
+	InitialContext initialContext;
+
 	// @formatter:off
-	private static final String Usage = "\nusage: java ConsumerTool \n"
+	private final String Usage = "\nusage: java ConsumerTool \n"
 			+ "[[user=<userid>]                          default: admin\n" 			
 			+ "[password=<password>]                     default: admin\n" 
 			+ "[consumerName=<consumer name>]            default: Fred\n" 
@@ -59,6 +74,9 @@ public class BrowserTool implements ExceptionListener {
 			+ "[selector=<header%20=%20%27value%27>]     default: null\n" 
 			+ "[prefetch=<prefetch count>]               default: 1\n" 
 			+ "[verbose]                                 default: true \n" 
+			+ "[props=<path to props file>]              default: not used\n" 
+			+ "[jndi]                                    default: " + jndi + "\n"	
+			+ "[qpid]                                    default: " + qpid + "\n"
 			+ "[url=<broker url>]                        default: " + ActiveMQConnection.DEFAULT_BROKER_URL + "\n";			
 	// @formatter:on
 
@@ -77,11 +95,28 @@ public class BrowserTool implements ExceptionListener {
 
 		// If 'help' request, then simply display usage string and exit
 		if (browserTool.isHelp()) {
-			System.out.println(Usage);
+			System.out.println(browserTool.Usage);
 			return;
 		}
 
-		// Else, start the tool
+		// if a props file was specified, then use the properties
+		// specified in that file
+		if (browserTool.getProps() != null) {
+			ArrayList<String> props = readProps(browserTool.getProps());
+			// if there were properties, add them
+			if (props.size() > 0) {
+				unknown = setOptions(browserTool,
+						props.toArray(new String[props.size()]));
+				// Exit if end user entered unknown options n properties file
+				if (unknown.length > 0) {
+					System.out.println("Unknown options: "
+							+ Arrays.toString(unknown));
+					System.exit(-1);
+				}
+			}
+		}
+
+		// Start the tool
 		browserTool.start();
 	}
 
@@ -97,14 +132,52 @@ public class BrowserTool implements ExceptionListener {
 		System.out.println("selector            = " + selector);
 		System.out.println("verbose             = " + verbose);
 		System.out.println("prefetch            = " + prefetch);
+		System.out.println("props               = " + props);
+		System.out.println("jndi                = " + jndi);
+		System.out.println("qpid                = " + qpid);
 
-		setConnectionFactory(new ActiveMQConnectionFactory(user, password, url));
-
-		// set the queue browser prefetch
+		
 		getPrefetchPolicy().setQueueBrowserPrefetch(getPrefetch());
-		getConnectionFactory().setPrefetchPolicy(getPrefetchPolicy());
+		
+		if (isJndi()) {
+			// if we've been told to use JNDI, then fetch the
+			// connection factory from the JNDI
+			initialContext = new InitialContext();		
+			setJmsConnectionFactory((ConnectionFactory) initialContext
+					.lookup("ConnectionFactory"));			
+			if( getJmsConnectionFactory() instanceof org.apache.qpid.jms.JmsConnectionFactory) {
+				this.setQpid(true);
+			}		
+			System.out.println("Connecting with JNDI context: "
+					+ initialContext.getEnvironment());
+		} else if (!isQpid()) {
+			System.out.println("Connecting to URL: " + url);
+			// if !qpid, then we're directly using the ActiveMQ 5.x connection
+			// factory. The default prefetch of 1 precludes the browser from
+			// hanging a bit after reading all messages.
+			ActiveMQConnectionFactory factory = new ActiveMQConnectionFactory(
+					getUser(), getPassword(), getUrl());			
+			factory.setPrefetchPolicy(getPrefetchPolicy());
+			setJmsConnectionFactory(factory);
+		} else {
+			System.out.println("Connecting to URL: " + url);
+			// using a qpid connection factory
+			// if URL is set to default openwire, then switch to default qpid
+			if (getUrl().equals(ActiveMQConnection.DEFAULT_BROKER_URL)) {
+				setUrl("amqp://localhost:5672");
+			} else {
+				if (!isQpidUrl(url)) {
+					System.out
+							.println("ERROR: this url doesn't have a valid qpid scheme: "
+									+ url);
+					System.exit(1);
+				}
+			}
+			setJmsConnectionFactory(new org.apache.qpid.jms.JmsConnectionFactory(
+					getUser(), getPassword(), getUrl()));
+		}
 
-		connection = getConnectionFactory().createConnection();
+		connection = getJmsConnectionFactory().createConnection();
 		if (connection == null) {
 			System.out.println("Error, unable to acquire connection");
 			return;
@@ -127,11 +200,39 @@ public class BrowserTool implements ExceptionListener {
 			while (msgs.hasMoreElements()) {
 				Message tempMsg = (Message) msgs.nextElement();
 				msgCount++;
-				if (isVerbose()) {
-					System.out.println("Message: " + tempMsg.toString());
-					System.out.println("JMSMessageID = " + tempMsg.getJMSMessageID() + "\n");
-					
+				if (!isVerbose()) {
+					continue;
 				}
+				// if (objMsg instanceof AmqpJmsMessageFacade) {
+				if (isQpid()) {
+					Enumeration<String> msgEnum = tempMsg.getPropertyNames();
+					System.out.print("AMQP Message: { ");
+					for (; msgEnum.hasMoreElements();) {
+						String key = msgEnum.nextElement();
+						Object value = tempMsg.getObjectProperty(key);
+						System.out.print(key + "=" + value.toString() + ",  ");
+					}
+					System.out.println(" }");
+					System.out.print("JMSDeliveryMode = "
+							+ tempMsg.getJMSDeliveryMode() + ", ");
+					System.out.print("JMSDeliveryTime = "
+							+ tempMsg.getJMSDeliveryTime() + ", ");
+					System.out.print("JMSPriority = "
+							+ tempMsg.getJMSPriority() + ", ");
+					System.out.print("JMSExpiration = "
+							+ tempMsg.getJMSExpiration() + ", ");
+					System.out
+							.print("JMSType = " + tempMsg.getJMSType() + ", ");
+					System.out.println("JMSMessageID = "
+							+ tempMsg.getJMSMessageID() + "\n");
+				} else {
+					// if its not qpid-jms, then its activemq (openwire)jms
+					System.out.println("OpenWire Message: "
+							+ tempMsg.toString() + "\n");
+					// System.out.println("JMSMessageID = "
+					// + tempMsg.getJMSMessageID() + "\n");
+				}
+
 			}
 		}
 
@@ -298,6 +399,51 @@ public class BrowserTool implements ExceptionListener {
 		if (prefetch >= 0) {
 			this.prefetch = prefetch;
 		}
+	}
+
+	/**
+	 * @return the props
+	 */
+	public String getProps() {
+		return props;
+	}
+
+	/**
+	 * @param props
+	 *            the props to set
+	 */
+	public void setProps(String props) {
+		this.props = props;
+	}
+
+	/**
+	 * @return the qpid
+	 */
+	public boolean isQpid() {
+		return qpid;
+	}
+
+	/**
+	 * @param qpid
+	 *            the qpid to set
+	 */
+	public void setQpid(boolean qpid) {
+		this.qpid = qpid;
+	}
+
+	/**
+	 * @return the jndi
+	 */
+	public boolean isJndi() {
+		return jndi;
+	}
+
+	/**
+	 * @param jndi
+	 *            the jndi to set
+	 */
+	public void setJndi(boolean jndi) {
+		this.jndi = jndi;
 	}
 
 }
