@@ -32,6 +32,8 @@ import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.ActiveMQSession;
 import org.apache.activemq.pool.PooledConnectionFactory;
 
+import org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory;
+
 import static org.redhat.amq.tools.CommandLineSupport.setOptions;
 import static org.redhat.amq.tools.CommandLineSupport.readProps;
 
@@ -228,8 +230,29 @@ public class ConsumerTool implements ExceptionListener {
 			// if we've been told to use JNDI, then fetch the
 			// connection factory from the JNDI
 			initialContext = new InitialContext();
+			// setConnectionFactory((ConnectionFactory) initialContext
+			// .lookup("ConnectionFactory"));
 			setJmsConnectionFactory((ConnectionFactory) initialContext
 					.lookup("ConnectionFactory"));
+			if (getJmsConnectionFactory() instanceof ActiveMQConnectionFactory) {
+				((ActiveMQConnectionFactory) getJmsConnectionFactory())
+						.setUserName(getUser());
+				((ActiveMQConnectionFactory) getJmsConnectionFactory())
+						.setPassword(getPassword());
+			} else if (getJmsConnectionFactory() instanceof org.apache.qpid.jms.JmsConnectionFactory) {
+				((org.apache.qpid.jms.JmsConnectionFactory) getJmsConnectionFactory())
+						.setUsername(getUser());
+				((org.apache.qpid.jms.JmsConnectionFactory) getJmsConnectionFactory())
+						.setPassword(getPassword());
+			} else if (getJmsConnectionFactory() instanceof ActiveMQJMSConnectionFactory) {
+				((ActiveMQJMSConnectionFactory) getJmsConnectionFactory())
+						.setUser(getUser());
+				((ActiveMQJMSConnectionFactory) getJmsConnectionFactory())
+						.setPassword(getPassword());
+			} else {
+				throw new Exception("ERROR: unknown connection factory: "
+						+ getJmsConnectionFactory().getClass().getName());
+			}
 			System.out.println("Connecting with JNDI context: "
 					+ initialContext.getEnvironment());
 
@@ -300,9 +323,9 @@ public class ConsumerTool implements ExceptionListener {
 				threadPool.execute(new ConsumerThread(this, i, connection));
 			} else {
 				/*
-				 * if instructed to use distinct destinations and virtual
-				 * topic, then create distinct "queues" for the given virtual
-				 * topic name. in this case, each distinct destination's name is
+				 * if instructed to use distinct destinations and virtual topic,
+				 * then create distinct "queues" for the given virtual topic
+				 * name. in this case, each distinct destination's name is
 				 * constructed as follows:
 				 * "Consumer.<thread number>.VirtualTopic.getSubject(). For example, "
 				 * Consumer.1.VirtualTopic.Foo",  "Consumer.2.VirtualTopic.Foo",

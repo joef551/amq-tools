@@ -34,7 +34,7 @@ import javax.naming.InitialContext;
 import org.apache.activemq.ActiveMQConnection;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.ActiveMQPrefetchPolicy;
-
+import org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory;
 
 /**
  * A simple AMQ browser.
@@ -52,6 +52,7 @@ public class BrowserTool implements ExceptionListener {
 	private boolean help;
 	private boolean verbose = true;
 	private boolean qpid;
+	private boolean nativeArtemis;
 	private boolean jndi;
 
 	private QueueBrowser browser;
@@ -136,18 +137,38 @@ public class BrowserTool implements ExceptionListener {
 		System.out.println("jndi                = " + jndi);
 		System.out.println("qpid                = " + qpid);
 
-		
 		getPrefetchPolicy().setQueueBrowserPrefetch(getPrefetch());
-		
+
 		if (isJndi()) {
 			// if we've been told to use JNDI, then fetch the
 			// connection factory from the JNDI
-			initialContext = new InitialContext();		
+			initialContext = new InitialContext();
 			setJmsConnectionFactory((ConnectionFactory) initialContext
-					.lookup("ConnectionFactory"));			
-			if( getJmsConnectionFactory() instanceof org.apache.qpid.jms.JmsConnectionFactory) {
-				this.setQpid(true);
-			}		
+					.lookup("ConnectionFactory"));
+
+			if (getJmsConnectionFactory() instanceof ActiveMQConnectionFactory) {
+				((ActiveMQConnectionFactory) getJmsConnectionFactory())
+						.setUserName(getUser());
+				((ActiveMQConnectionFactory) getJmsConnectionFactory())
+						.setPassword(getPassword());
+				((ActiveMQConnectionFactory) getJmsConnectionFactory())
+						.setPrefetchPolicy(getPrefetchPolicy());
+			} else if (getJmsConnectionFactory() instanceof org.apache.qpid.jms.JmsConnectionFactory) {
+				((org.apache.qpid.jms.JmsConnectionFactory) getJmsConnectionFactory())
+						.setUsername(getUser());
+				((org.apache.qpid.jms.JmsConnectionFactory) getJmsConnectionFactory())
+						.setPassword(getPassword());
+				setQpid(true);
+			} else if (getJmsConnectionFactory() instanceof ActiveMQJMSConnectionFactory) {
+				((ActiveMQJMSConnectionFactory) getJmsConnectionFactory())
+						.setUser(getUser());
+				((ActiveMQJMSConnectionFactory) getJmsConnectionFactory())
+						.setPassword(getPassword());
+				setNativeArtemis(true);
+			} else {
+				throw new Exception("ERROR: unknown connection factory: "
+						+ getJmsConnectionFactory().getClass().getName());
+			}
 			System.out.println("Connecting with JNDI context: "
 					+ initialContext.getEnvironment());
 		} else if (!isQpid()) {
@@ -156,7 +177,7 @@ public class BrowserTool implements ExceptionListener {
 			// factory. The default prefetch of 1 precludes the browser from
 			// hanging a bit after reading all messages.
 			ActiveMQConnectionFactory factory = new ActiveMQConnectionFactory(
-					getUser(), getPassword(), getUrl());			
+					getUser(), getPassword(), getUrl());
 			factory.setPrefetchPolicy(getPrefetchPolicy());
 			setJmsConnectionFactory(factory);
 		} else {
@@ -195,6 +216,7 @@ public class BrowserTool implements ExceptionListener {
 				session.createQueue(getSubject()), getSelector());
 
 		Enumeration msgs = browser.getEnumeration();
+
 		int msgCount = 0;
 		if (msgs != null) {
 			while (msgs.hasMoreElements()) {
@@ -212,6 +234,22 @@ public class BrowserTool implements ExceptionListener {
 						Object value = tempMsg.getObjectProperty(key);
 						System.out.print(key + "=" + value.toString() + ",  ");
 					}
+					System.out.println(" }");
+					System.out.print("JMSDeliveryMode = "
+							+ tempMsg.getJMSDeliveryMode() + ", ");
+					System.out.print("JMSDeliveryTime = "
+							+ tempMsg.getJMSDeliveryTime() + ", ");
+					System.out.print("JMSPriority = "
+							+ tempMsg.getJMSPriority() + ", ");
+					System.out.print("JMSExpiration = "
+							+ tempMsg.getJMSExpiration() + ", ");
+					System.out
+							.print("JMSType = " + tempMsg.getJMSType() + ", ");
+					System.out.println("JMSMessageID = "
+							+ tempMsg.getJMSMessageID() + "\n");
+				} else if (isNativeArtemis()) {
+					System.out.println("Artemis Message: " + tempMsg.toString()
+							+ "\n");
 					System.out.println(" }");
 					System.out.print("JMSDeliveryMode = "
 							+ tempMsg.getJMSDeliveryMode() + ", ");
@@ -444,6 +482,21 @@ public class BrowserTool implements ExceptionListener {
 	 */
 	public void setJndi(boolean jndi) {
 		this.jndi = jndi;
+	}
+
+	/**
+	 * @return the nativeArtemis
+	 */
+	public boolean isNativeArtemis() {
+		return nativeArtemis;
+	}
+
+	/**
+	 * @param nativeArtemis
+	 *            the nativeArtemis to set
+	 */
+	public void setNativeArtemis(boolean nativeArtemis) {
+		this.nativeArtemis = nativeArtemis;
 	}
 
 }

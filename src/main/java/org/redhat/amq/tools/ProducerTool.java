@@ -19,6 +19,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
 import static org.redhat.amq.tools.ConsumerTool.isQpidUrl;
 
 import javax.naming.InitialContext;
@@ -26,6 +27,7 @@ import javax.jms.ConnectionFactory;
 
 import org.apache.activemq.ActiveMQConnection;
 import org.apache.activemq.ActiveMQConnectionFactory;
+import org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory;
 
 import static org.redhat.amq.tools.CommandLineSupport.setOptions;
 import static org.redhat.amq.tools.CommandLineSupport.readProps;
@@ -221,6 +223,25 @@ public class ProducerTool {
 				initialContext = new InitialContext();
 				setJmsConnectionFactory((ConnectionFactory) initialContext
 						.lookup("ConnectionFactory"));
+				if (getJmsConnectionFactory() instanceof ActiveMQConnectionFactory) {
+					((ActiveMQConnectionFactory) getJmsConnectionFactory())
+							.setUserName(getUser());
+					((ActiveMQConnectionFactory) getJmsConnectionFactory())
+							.setPassword(getPassword());
+				} else if (getJmsConnectionFactory() instanceof org.apache.qpid.jms.JmsConnectionFactory) {
+					((org.apache.qpid.jms.JmsConnectionFactory) getJmsConnectionFactory())
+							.setUsername(getUser());
+					((org.apache.qpid.jms.JmsConnectionFactory) getJmsConnectionFactory())
+							.setPassword(getPassword());
+				} else if (getJmsConnectionFactory() instanceof ActiveMQJMSConnectionFactory) {
+					((ActiveMQJMSConnectionFactory) getJmsConnectionFactory())
+							.setUser(getUser());
+					((ActiveMQJMSConnectionFactory) getJmsConnectionFactory())
+							.setPassword(getPassword());
+				} else {
+					throw new Exception("ERROR: unknown connection factory: "
+							+ getJmsConnectionFactory().getClass().getName());
+				}
 				System.out.println("Connecting with JNDI context: "
 						+ initialContext.getEnvironment());
 
