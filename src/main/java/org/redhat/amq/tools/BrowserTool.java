@@ -249,8 +249,7 @@ public class BrowserTool implements ExceptionListener {
 							+ tempMsg.getJMSMessageID() + "\n");
 				} else if (isNativeArtemis()) {
 					System.out.println("Artemis Message: " + tempMsg.toString()
-							+ "\n");
-					System.out.println(" }");
+							+ "\n");					
 					System.out.print("JMSDeliveryMode = "
 							+ tempMsg.getJMSDeliveryMode() + ", ");
 					System.out.print("JMSDeliveryTime = "
