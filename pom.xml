@@ -10,16 +10,33 @@
 	<properties>
 		<spring.version>4.0.5.RELEASE</spring.version>
 		<slf4j.version>1.7.7</slf4j.version>
-		<activemq.version>5.11.0.redhat-621084</activemq.version> 
-		<!--<activemq.version>5.11.0.redhat-630133</activemq.version>-->  
-		<!-- <activemq.version>5.9.0.redhat-610379</activemq.version> -->  
+		
+		<!-- *** ActiveMQ OpenWire JMS Client *** -->
+		<!-- acquired from Red Hat GA central -->
+		<!-- <activemq.version>5.11.0.redhat-621084</activemq.version> -->
+		<activemq.version>5.11.0.redhat-630133</activemq.version>
+		<!-- <activemq.version>5.9.0.redhat-610379</activemq.version> -->
 		<!-- <activemq.version>5.9.0.redhat-611423</activemq.version> -->
-		<!-- <activemq.version>5.11.0.redhat-620133</activemq.version> --> 
-		<!--  <activemq.version>5.8.0.redhat-60024</activemq.version> -->
+		<!-- <activemq.version>5.11.0.redhat-620133</activemq.version> -->
+		<!-- <activemq.version>5.8.0.redhat-60024</activemq.version> -->
 		<!-- <activemq.version>5.8.0.redhat-60065</activemq.version> -->
-		<artemis.version>1.2.0.amq-700007-redhat-1</artemis.version>
-		<qpid.version>0.20.0</qpid.version>  
-		<!-- <qpid.version>0.8.0</qpid.version> -->
+		
+		<!-- acquired from maven central -->
+		<!--  <activemq.version>5.11.0</activemq.version> -->
+
+
+		<!-- *** Artemis JMS Client *** -->
+		<!-- acquired from maven central -->
+		<!-- <artemis.version>2.0.0</artemis.version> -->
+		<!-- acquired from http://download.eng.rdu2.redhat.com/devel/candidates/amq -->
+		<artemis.version>2.0.0.amq-700002-redhat-1</artemis.version>
+
+		<!-- *** Qpid JMS Client *** -->
+		<!-- acquired from maven central -->
+		<!-- <qpid.version>0.21.0</qpid.version> -->
+		<!-- acquired from http://download.eng.rdu2.redhat.com/devel/candidates/amq/AMQ-CLIENTS-1.1.0.RC2/maven-repository -->
+		<qpid.version>0.20.0.redhat-5</qpid.version>
+
 	</properties>
 
 	<dependencies>
