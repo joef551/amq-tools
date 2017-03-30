@@ -75,6 +75,9 @@ Some examples:
 
     $ runc url=amqp://10.0.1.21:5672 qpid
 
+15. Run the **queue browser**, have it browse those messages on the default destination, and have it derive the connection factory from the jndi.properties file.  
+
+    $ runb jndi 
 
 
 The consumer will dump sampling statistics, such as the ones below, each time it reaches the sampleSize (default = 5000).
@@ -148,5 +151,20 @@ qpid|false|When set to true, the producer will use the qpid connection factory p
 props|null|Is used to specify a file that contains one or more options. For example, the file may contain the option 'url=tcp://myhost:61616'. Options found in this file override those options listed on the command line. 
 jndi | false | When set to true, the producer will derive the connection factory and its url from the jndi.properties file. See the project's jndi.properties file for examples.
 help | false | use only for displaying all producer options (e.g., runp help) 
+
+<br><br>
+
+Browser Options
+----------------
+
+ Option    | Default Value | Description 
+:------    | :------   | :-----------
+selector | not used | Used for specifying a selector. For example, to specify the selector foo='bar', enter selector=foo=%27bar%27, and to specify foo = 'bar', enter foo%20=%20%27bar%27. Note that single quotes are required. If you specify this option in the properties/options file (see props option below), then these special encoded characters (i.e., %27) are not required. For example, you can simply use selector=foo='bar'
+subject	|TOOL.DEFAULT |	The name of the target queue destination.url	|failover://tcp://localhost:61616	|The url that is used for connecting to the ActiveMQ message broker. You can assign it all the options described [here](http://activemq.apache.org/connection-configuration-uri.html). This property is ignored when the **jndi** property is set to true.user |	admin |	The user name that is used for establishing a connection with ActiveMQ.
+password |	admin |	The password that is used for establishing a connection with ActiveMQ.verbose |	true	| When set to true, each message that is browsed will be written out to the console.
+qpid| false | When set to true, the browser will use the qpid connection factory provided by the 'org.apache.qpid.jms' package, which is made available by [Apache Qpid](https://qpid.apache.org). This property is ignored when the **jndi** property is set to true. If you're not using jndi and you'd like the client to connect to AMQ-7 (a.k.a., Artemis) via AMQP, then set this property to true and use a URL scheme of 'amqp' (e.g., url=amqp://...). Click [here](https://github.com/apache/qpid-jms/blob/master/qpid-jms-docs/Configuration.md) to learn more about the other valid amqp schems (e.g., amqps), configuration options,  and how to enable frame-level debug. It comes in quite handy when troubleshooting.   
+props|null|Is used to specify a file that contains one or more options. For example, the file may contain the option 'url=tcp://myhost:61616'. Options found in this file override those options listed on the command line.
+jndi|false|When set to true, the browser will derive the connection factory and its url from the jndi.properties file. See the project's jndi.properties file for examples. If you have the JNDI set such that you're using the 
+help | false | use only for displaying all browser options (e.g., runb help) 
 
 
