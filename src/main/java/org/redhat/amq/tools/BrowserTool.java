@@ -54,6 +54,7 @@ public class BrowserTool implements ExceptionListener {
 	private boolean qpid;
 	private boolean nativeArtemis;
 	private boolean jndi;
+	private boolean openWire;
 
 	private QueueBrowser browser;
 	private ActiveMQConnectionFactory connectionFactory;
@@ -146,6 +147,7 @@ public class BrowserTool implements ExceptionListener {
 			setJmsConnectionFactory((ConnectionFactory) initialContext
 					.lookup("ConnectionFactory"));
 
+			// determine which jms client we're using
 			if (getJmsConnectionFactory() instanceof ActiveMQConnectionFactory) {
 				((ActiveMQConnectionFactory) getJmsConnectionFactory())
 						.setUserName(getUser());
@@ -153,6 +155,7 @@ public class BrowserTool implements ExceptionListener {
 						.setPassword(getPassword());
 				((ActiveMQConnectionFactory) getJmsConnectionFactory())
 						.setPrefetchPolicy(getPrefetchPolicy());
+				setOpenWire(true);
 			} else if (getJmsConnectionFactory() instanceof org.apache.qpid.jms.JmsConnectionFactory) {
 				((org.apache.qpid.jms.JmsConnectionFactory) getJmsConnectionFactory())
 						.setUsername(getUser());
@@ -183,7 +186,7 @@ public class BrowserTool implements ExceptionListener {
 		} else {
 			System.out.println("Connecting to URL: " + url);
 			// using a qpid connection factory
-			// if URL is set to default openwire, then switch to default qpid
+			// if URL is set to default openWire, then switch to default qpid
 			if (getUrl().equals(ActiveMQConnection.DEFAULT_BROKER_URL)) {
 				setUrl("amqp://localhost:5672");
 			} else {
@@ -235,39 +238,18 @@ public class BrowserTool implements ExceptionListener {
 						System.out.print(key + "=" + value.toString() + ",  ");
 					}
 					System.out.println(" }");
-					System.out.print("JMSDeliveryMode = "
-							+ tempMsg.getJMSDeliveryMode() + ", ");
-					System.out.print("JMSDeliveryTime = "
-							+ tempMsg.getJMSDeliveryTime() + ", ");
-					System.out.print("JMSPriority = "
-							+ tempMsg.getJMSPriority() + ", ");
-					System.out.print("JMSExpiration = "
-							+ tempMsg.getJMSExpiration() + ", ");
-					System.out
-							.print("JMSType = " + tempMsg.getJMSType() + ", ");
-					System.out.println("JMSMessageID = "
-							+ tempMsg.getJMSMessageID() + "\n");
+					printJmsHeaders(tempMsg);
+
 				} else if (isNativeArtemis()) {
 					System.out.println("Artemis Message: " + tempMsg.toString()
-							+ "\n");					
-					System.out.print("JMSDeliveryMode = "
-							+ tempMsg.getJMSDeliveryMode() + ", ");
-					System.out.print("JMSDeliveryTime = "
-							+ tempMsg.getJMSDeliveryTime() + ", ");
-					System.out.print("JMSPriority = "
-							+ tempMsg.getJMSPriority() + ", ");
-					System.out.print("JMSExpiration = "
-							+ tempMsg.getJMSExpiration() + ", ");
-					System.out
-							.print("JMSType = " + tempMsg.getJMSType() + ", ");
-					System.out.println("JMSMessageID = "
-							+ tempMsg.getJMSMessageID() + "\n");
+							+ "\n");
+					printJmsHeaders(tempMsg);
 				} else {
-					// if its not qpid-jms, then its activemq (openwire)jms
+					// if its not qpid-jms, then its activemq (openWire)jms
 					System.out.println("OpenWire Message: "
 							+ tempMsg.toString() + "\n");
-					// System.out.println("JMSMessageID = "
-					// + tempMsg.getJMSMessageID() + "\n");
+					printJmsHeaders(tempMsg);
+
 				}
 
 			}
@@ -283,6 +265,27 @@ public class BrowserTool implements ExceptionListener {
 		ex.printStackTrace();
 		threadPool.shutdown();
 		System.exit(1);
+	}
+
+	private void printJmsHeaders(Message msg) throws Exception {
+
+		System.out
+				.print("JMSDeliveryMode = " + msg.getJMSDeliveryMode() + ", ");
+		// openwire doesn't support the 2.0 spec
+		if (!isOpenWire()) {
+			System.out.print("JMSDeliveryTime = " + msg.getJMSDeliveryTime()
+					+ ", ");
+		}
+		System.out.print("JMSPriority = " + msg.getJMSPriority() + ", ");
+		System.out.print("JMSExpiration = " + msg.getJMSExpiration() + ", ");
+		System.out.print("JMSType = " + msg.getJMSType() + ", ");
+		System.out.print("JMSTimestamp = " + msg.getJMSTimestamp() + ", ");
+		System.out.print("JMSDestination = " + msg.getJMSDestination() + ", ");
+		System.out.print("JMSRedelivered = " + msg.getJMSRedelivered() + ", ");
+		System.out.print("JMSReplyTo = " + msg.getJMSReplyTo() + ", ");
+		System.out.print("JMSCorrelationID = " + msg.getJMSCorrelationID()
+				+ ", ");
+		System.out.println("JMSMessageID = " + msg.getJMSMessageID() + "\n");
 	}
 
 	public void setConsumerName(String consumerName) {
@@ -496,6 +499,21 @@ public class BrowserTool implements ExceptionListener {
 	 */
 	public void setNativeArtemis(boolean nativeArtemis) {
 		this.nativeArtemis = nativeArtemis;
+	}
+
+	/**
+	 * @return the openWire
+	 */
+	public boolean isOpenWire() {
+		return openWire;
+	}
+
+	/**
+	 * @param openWire
+	 *            the openWire to set
+	 */
+	public void setOpenWire(boolean openwire) {
+		this.openWire = openwire;
 	}
 
 }
