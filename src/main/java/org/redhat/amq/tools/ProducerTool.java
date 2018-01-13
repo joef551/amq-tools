@@ -15,6 +15,8 @@ package org.redhat.amq.tools;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
@@ -48,6 +50,8 @@ public class ProducerTool {
 	private String header;
 	private String headerValue;
 	private String props;
+	private String headers;
+	private Map<String, String> headersMap;
 	private boolean topic;
 	private boolean transacted;
 	private boolean persistent;
@@ -104,7 +108,8 @@ public class ProducerTool {
 		+ "[group=<group id>]                         default: " + "null" + "\n" 
 		+ "[priority=<priority (0-9)>]                default: " + "not set" + "\n" 
 		+ "[timeToLive=<msg time to live>]            default: " + "not set" + "\n" 
-		+ "[header=<key:value>]                       default: not set\n" 
+		//+ "[header=<key:value>]                       default: not set\n" 
+		+ "[headers=<key:value,...,key:value>]        default: not set\n" 
 		+ "[sleepTime=<sleep time between each send>] default: " + sleepTime + "\n" 
 		+ "[message=<msg-to-send>]                    default: one will be created\n" 
 		+ "[messageSize=<size of msg to send>]        default: " + messageSize + "\n" 
@@ -137,7 +142,8 @@ public class ProducerTool {
 
 		// Exit if end user entered unknown options
 		if (unknown.length > 0) {
-			System.out.println("Unknown options: " + Arrays.toString(unknown));
+			System.out.println("Found one or more unknown options: "
+					+ Arrays.toString(unknown));
 			System.exit(-1);
 		}
 
@@ -214,6 +220,17 @@ public class ProducerTool {
 			System.out.println("qpid                 = " + qpid);
 			System.out.println("sharedDestination    = " + sharedDestination);	
 			// @formatter:on
+
+			if (isVerbose()) {
+				if (getHeadersMap() != null && !getHeadersMap().isEmpty()) {
+					for (Map.Entry<String, String> entry : getHeadersMap()
+							.entrySet()) {
+						System.out.println("header key:value = "
+								+ entry.getKey() + ":" + entry.getValue());
+
+					}
+				}
+			}
 
 			// Create the connection factory.
 
@@ -772,6 +789,52 @@ public class ProducerTool {
 	 */
 	public void setReplyWaitTime(long replyWaitTime) {
 		this.replyWaitTime = replyWaitTime;
+	}
+
+	/**
+	 * @return the headers
+	 */
+	public String getHeaders() {
+		return headers;
+	}
+
+	/**
+	 * @param headers
+	 *            the headers to set
+	 */
+	public void setHeaders(String headers) throws Exception {		
+		this.headers = headers;
+		if (headers == null || headers.isEmpty()) {
+			return;
+		}
+		Map<String, String> map = new HashMap<String, String>();
+		String[] kvs = headers.split(",");
+		for (String kv : kvs) {
+			String[] pair = kv.split(":");
+			if (pair.length != 2) {
+				System.out.println("ERROR: headers is not properly formatted");
+				throw new Exception("headers is not properly formatted");
+			}
+			map.put(pair[0].trim(), pair[1].trim());
+		}
+		if (!map.isEmpty()) {
+			this.setHeadersMap(map);
+		}
+	}
+
+	/**
+	 * @return the headersMap
+	 */
+	Map<String, String> getHeadersMap() {
+		return headersMap;
+	}
+
+	/**
+	 * @param headersMap
+	 *            the headersMap to set
+	 */
+	void setHeadersMap(Map<String, String> headersMap) {
+		this.headersMap = headersMap;
 	}
 
 }

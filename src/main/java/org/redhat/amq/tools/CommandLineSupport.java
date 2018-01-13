@@ -59,6 +59,7 @@ public final class CommandLineSupport {
 								value += "=";
 						}
 					}
+					//System.out.println("Checking " + name + ":" + value);
 					if (!IntrospectionSupport.setProperty(target, name, value)) {
 						rc.add(option);
 						continue;

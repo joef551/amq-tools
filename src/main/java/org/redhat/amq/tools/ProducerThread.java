@@ -14,6 +14,7 @@
 package org.redhat.amq.tools;
 
 import java.util.Date;
+import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -30,6 +31,7 @@ import javax.jms.MessageConsumer;
 import javax.jms.MessageProducer;
 import javax.jms.Session;
 import javax.jms.ExceptionListener;
+import javax.jms.TextMessage;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
 
@@ -233,7 +235,11 @@ public class ProducerThread implements Runnable, ExceptionListener {
 				}
 			}
 
-			if (getHeader() != null) {
+			if (getHeaders() != null && !getHeaders().isEmpty()) {
+				for (Map.Entry<String, String> entry : getHeaders().entrySet()) {
+					message.setStringProperty(entry.getKey(), entry.getValue());
+				}
+			} else if (getHeader() != null) {
 				message.setStringProperty(getHeader(), getHeaderValue());
 			}
 
@@ -268,6 +274,21 @@ public class ProducerThread implements Runnable, ExceptionListener {
 				if (receivedMessage == null) {
 					throw new Exception(
 							"Reply message not received within allotted time");
+				}
+				if (isVerbose()) {
+					if (receivedMessage instanceof TextMessage) {
+						System.out.println("Received this text message: "
+								+ ((TextMessage) receivedMessage).getText());
+					} else if (receivedMessage instanceof BytesMessage) {
+						System.out
+								.println("Received BytesMessage with this length: "
+										+ ((BytesMessage) receivedMessage)
+												.getBodyLength());
+						System.out.println("Received BytesMessage: "
+								+ receivedMessage.toString());
+					} else {
+						System.out.println("Unknown message type received");
+					}
 				}
 			}
 
@@ -408,6 +429,10 @@ public class ProducerThread implements Runnable, ExceptionListener {
 
 	private String getHeader() {
 		return pt.getHeader();
+	}
+
+	private Map<String, String> getHeaders() {
+		return pt.getHeadersMap();
 	}
 
 	private String getHeaderValue() {
